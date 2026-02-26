@@ -1,26 +1,86 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  /* Page backgrounds */
+  --color-cream: #FAF8F5;
+  --color-sand: #F5F0EB;
+  --color-sand-dark: #E8E0D8;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Text */
+  --color-warm-gray: #8C7E6E;
+  --color-espresso: #3C2A1A;
+
+  /* Accents */
+  --color-rust: #B85C38;
+  --color-sage: #7A8B6F;
+  --color-sky: #6B9BC3;
+  --color-golden: #D4A843;
+
+  /* Domain colors */
+  --color-domain-language-bg: #EBF0E8;
+  --color-domain-language-text: #5A6E50;
+  --color-domain-motor-bg: #E8EEF5;
+  --color-domain-motor-text: #4A6180;
+  --color-domain-social-bg: #F5EDE8;
+  --color-domain-social-text: #8B5E3C;
+  --color-domain-cognitive-bg: #F0EBF5;
+  --color-domain-cognitive-text: #6B5080;
+  --color-domain-creative-bg: #FFF8E8;
+  --color-domain-creative-text: #8B7530;
+  --color-domain-sel-bg: #FDE8E8;
+  --color-domain-sel-text: #8B3C3C;
+
+  /* Fonts */
+  --font-display: var(--font-playfair);
+  --font-body: var(--font-dm-sans);
+  --font-chat: var(--font-source-serif);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-cream);
+  color: var(--color-espresso);
+  font-family: var(--font-body), -apple-system, sans-serif;
+}
+
+/* Smooth scrollbar */
+.orbit-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.orbit-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-sand-dark);
+  border-radius: 3px;
+}
+
+/* Fade-up animation */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-up {
+  animation: fadeUp 0.5s ease forwards;
+  opacity: 0;
+}
+
+.delay-1 { animation-delay: 0.05s; }
+.delay-2 { animation-delay: 0.1s; }
+.delay-3 { animation-delay: 0.15s; }
+.delay-4 { animation-delay: 0.2s; }
+.delay-5 { animation-delay: 0.25s; }
+.delay-6 { animation-delay: 0.3s; }
+
+/* Typing indicator dots */
+@keyframes typingDot {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+
+.typing-dot {
+  animation: typingDot 1.4s ease-in-out infinite;
 }

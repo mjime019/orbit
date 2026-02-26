@@ -1,0 +1,291 @@
+import { createServerSupabase } from "./supabase-server";
+
+// For the demo, we use the fixed seed data UUIDs.
+// In production, these would come from the auth session.
+const DEMO_CHILD_ID = "00000000-0000-0000-0000-000000001001";
+export const DEMO_PARENT_ID = "00000000-0000-0000-0000-000000000201";
+const DEMO_SCHOOL_ID = "00000000-0000-0000-0000-000000000001";
+const DEMO_CLASSROOM_ID = "00000000-0000-0000-0000-000000000010";
+
+export async function getChildWithProfile(childId = DEMO_CHILD_ID) {
+  const sb = createServerSupabase();
+
+  const [{ data: child }, { data: profile }] = await Promise.all([
+    sb.from("children").select("*").eq("id", childId).single(),
+    sb.from("child_profiles").select("*").eq("child_id", childId).single(),
+  ]);
+
+  let classroom = null;
+  if (child?.classroom_id) {
+    const { data } = await sb
+      .from("classrooms")
+      .select("name, lesson_theme")
+      .eq("id", child.classroom_id)
+      .single();
+    classroom = data;
+  }
+
+  return { child, profile, classroom };
+}
+
+export async function getRecentHighlights(childId = DEMO_CHILD_ID, limit = 5) {
+  const sb = createServerSupabase();
+  const { data } = await sb
+    .from("highlights")
+    .select("*")
+    .eq("child_id", childId)
+    .eq("status", "sent")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return data ?? [];
+}
+
+export async function getRecentObservations(
+  childId = DEMO_CHILD_ID,
+  limit = 10
+) {
+  const sb = createServerSupabase();
+  const { data } = await sb
+    .from("observations")
+    .select("*, profiles!observations_teacher_id_fkey(name)")
+    .eq("child_id", childId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return data ?? [];
+}
+
+export async function getActivityRecommendations(
+  childId = DEMO_CHILD_ID,
+  limit = 3
+) {
+  const sb = createServerSupabase();
+  const { data } = await sb
+    .from("activity_recommendations")
+    .select("*, activities(*)")
+    .eq("child_id", childId)
+    .eq("dismissed", false)
+    .eq("completed", false)
+    .order("recommended_at", { ascending: false })
+    .limit(limit);
+  return data ?? [];
+}
+
+export async function getWeekendRecommendations(
+  childId = DEMO_CHILD_ID,
+  limit = 4
+) {
+  const sb = createServerSupabase();
+  const { data } = await sb
+    .from("weekend_recommendations")
+    .select("*, weekend_places(*)")
+    .eq("child_id", childId)
+    .eq("dismissed", false)
+    .order("fit_score", { ascending: false })
+    .limit(limit);
+  return data ?? [];
+}
+
+export async function getUpcomingCalendarEvents(
+  schoolId = DEMO_SCHOOL_ID,
+  limit = 6
+) {
+  const sb = createServerSupabase();
+  const { data } = await sb
+    .from("school_calendar")
+    .select("*")
+    .eq("school_id", schoolId)
+    .order("event_date", { ascending: false })
+    .limit(limit);
+  return data ?? [];
+}
+
+export async function getJourneyChapters(childId = DEMO_CHILD_ID) {
+  const sb = createServerSupabase();
+  const { data } = await sb
+    .from("journey_chapters")
+    .select("*")
+    .eq("child_id", childId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  return data?.[0] ?? null;
+}
+
+export async function getChildContext(childId: string) {
+  const sb = createServerSupabase();
+
+  const { data: child } = await sb
+    .from("children")
+    .select("name, date_of_birth, classroom_id")
+    .eq("id", childId)
+    .single();
+
+  const [{ data: profile }, { data: classroom }] = await Promise.all([
+    sb
+      .from("child_profiles")
+      .select("interests, parent_goals")
+      .eq("child_id", childId)
+      .single(),
+    sb
+      .from("classrooms")
+      .select("name, lesson_theme")
+      .eq("id", child?.classroom_id ?? "")
+      .single(),
+  ]);
+
+  const age = child?.date_of_birth
+    ? Math.floor(
+        (Date.now() - new Date(child.date_of_birth).getTime()) /
+          (365.25 * 24 * 60 * 60 * 1000)
+      )
+    : 4;
+
+  return {
+    childName: child?.name ?? "Child",
+    childAge: age,
+    classroomName: classroom?.name ?? "Classroom",
+    classroomTheme: classroom?.lesson_theme ?? "",
+    interests: profile?.interests ?? [],
+    parentGoals: profile?.parent_goals ?? [],
+  };
+}
+
+export async function getClassroomRoster(
+  classroomId = DEMO_CLASSROOM_ID
+) {
+  const sb = createServerSupabase();
+  const { data } = await sb
+    .from("children")
+    .select("id, name, date_of_birth")
+    .eq("classroom_id", classroomId)
+    .order("name");
+  return data ?? [];
+}
+
+export async function getClassroomInfo(
+  classroomId = DEMO_CLASSROOM_ID
+) {
+  const sb = createServerSupabase();
+  const { data } = await sb
+    .from("classrooms")
+    .select("id, name, lesson_theme")
+    .eq("id", classroomId)
+    .single();
+  return data;
+}
+
+// ─── Phase 3 Query Helpers ────────────────────────────────────────
+
+export async function getAllWeekendPlaces() {
+  const sb = createServerSupabase();
+  const { data } = await sb
+    .from("weekend_places")
+    .select("*")
+    .order("rating", { ascending: false });
+  return data ?? [];
+}
+
+export async function getExtracurricularProviders(
+  schoolId = DEMO_SCHOOL_ID
+) {
+  const sb = createServerSupabase();
+  const { data } = await sb
+    .from("extracurricular_providers")
+    .select("*")
+    .or(`school_id.eq.${schoolId},school_id.is.null`)
+    .order("name");
+  return data ?? [];
+}
+
+export async function getTransitionSchools(childId = DEMO_CHILD_ID) {
+  const sb = createServerSupabase();
+  const { data } = await sb
+    .from("transition_schools")
+    .select("*")
+    .eq("child_id", childId)
+    .order("rating_fit", { ascending: false, nullsFirst: false });
+  return data ?? [];
+}
+
+// ─── Phase 2 Query Helpers ────────────────────────────────────────
+
+export async function getOrCreateConversation(
+  childId = DEMO_CHILD_ID,
+  parentId = DEMO_PARENT_ID
+) {
+  const sb = createServerSupabase();
+
+  // Try to find an existing conversation (maybeSingle returns null instead of throwing)
+  const { data: existing } = await sb
+    .from("conversations")
+    .select("*")
+    .eq("child_id", childId)
+    .eq("parent_id", parentId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) return existing;
+
+  // Create a new conversation
+  const { data: created, error } = await sb
+    .from("conversations")
+    .insert({
+      child_id: childId,
+      parent_id: parentId,
+      title: null,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    console.error("[getOrCreateConversation] Insert error:", error);
+    return null;
+  }
+
+  return created;
+}
+
+export async function getConversationMessages(
+  conversationId: string,
+  limit = 20
+) {
+  const sb = createServerSupabase();
+  const { data } = await sb
+    .from("messages")
+    .select("*")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true })
+    .limit(limit);
+  return data ?? [];
+}
+
+export async function getSchoolKnowledge(schoolId = DEMO_SCHOOL_ID) {
+  const sb = createServerSupabase();
+
+  const [{ data: school }, { data: knowledge }, { data: calendar }] =
+    await Promise.all([
+      sb.from("schools").select("name, address").eq("id", schoolId).single(),
+      sb
+        .from("school_knowledge")
+        .select("category, title, content")
+        .eq("school_id", schoolId)
+        .limit(20),
+      sb
+        .from("school_calendar")
+        .select("event_date, event_type, title, details")
+        .eq("school_id", schoolId)
+        .gte("event_date", new Date().toISOString().split("T")[0])
+        .order("event_date", { ascending: true })
+        .limit(5),
+    ]);
+
+  const knowledgeText = (knowledge ?? [])
+    .map((k) => `[${k.category}] ${k.title}: ${k.content}`)
+    .join("\n");
+
+  const calendarText = (calendar ?? [])
+    .map((e) => `${e.event_date} — ${e.title} (${e.event_type}): ${e.details ?? ""}`)
+    .join("\n");
+
+  return `School: ${school?.name ?? "School"}\nAddress: ${school?.address ?? ""}\n\nKnowledge Base:\n${knowledgeText || "No knowledge base entries."}\n\nUpcoming Events:\n${calendarText || "No upcoming events."}`;
+}
