@@ -42,7 +42,18 @@ export interface ChildProfile {
   interests: string[];
   emerging_interests: string[];
   play_style: string | null;
+  play_style_notes: string | null;
+  food_sensitivities: string[];
+  sensory_sensitivities: string[];
+  emotional_triggers: string[];
+  comfort_helps: string[];
+  comfort_escalates: string[];
+  routines: Record<string, unknown>;
+  family_context: Record<string, unknown>;
+  languages: string[];
   parent_goals: string[];
+  parent_constraints: Record<string, unknown>;
+  parent_values: Record<string, unknown>;
   onboarding_complete: boolean;
 }
 
@@ -119,6 +130,7 @@ export interface JourneyChapter {
   id: string;
   child_id: string;
   period: string;
+  age_label: string | null;
   title: string;
   emoji: string;
   is_current: boolean;
@@ -126,6 +138,13 @@ export interface JourneyChapter {
   top_domains: DevDomain[];
   summary: string | null;
   highlight_text: string | null;
+  highlight_icon: string | null;
+  breakthrough_text: string | null;
+  breakthrough_icon: string | null;
+  emerging: string[];
+  friends: string[];
+  parent_note: string | null;
+  created_at: string;
 }
 
 export interface SchoolCalendarEvent {

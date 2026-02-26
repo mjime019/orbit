@@ -99,7 +99,7 @@ export async function getUpcomingCalendarEvents(
   return data ?? [];
 }
 
-export async function getJourneyChapters(childId = DEMO_CHILD_ID) {
+export async function getLatestJourneyChapter(childId = DEMO_CHILD_ID) {
   const sb = createServerSupabase();
   const { data } = await sb
     .from("journey_chapters")
@@ -108,6 +108,41 @@ export async function getJourneyChapters(childId = DEMO_CHILD_ID) {
     .order("created_at", { ascending: false })
     .limit(1);
   return data?.[0] ?? null;
+}
+
+// Keep old name as alias for backward compat
+export const getJourneyChapters = getLatestJourneyChapter;
+
+export async function getAllJourneyChapters(childId = DEMO_CHILD_ID) {
+  const sb = createServerSupabase();
+  const { data } = await sb
+    .from("journey_chapters")
+    .select("*")
+    .eq("child_id", childId)
+    .order("created_at", { ascending: true });
+  return data ?? [];
+}
+
+export async function getAllSentHighlights(childId = DEMO_CHILD_ID) {
+  const sb = createServerSupabase();
+  const { data } = await sb
+    .from("highlights")
+    .select("*, profiles!highlights_approved_by_fkey(name)")
+    .eq("child_id", childId)
+    .eq("status", "sent")
+    .order("created_at", { ascending: false });
+  return data ?? [];
+}
+
+export async function getTodayObservationCount(classroomId = DEMO_CLASSROOM_ID) {
+  const sb = createServerSupabase();
+  const today = new Date().toISOString().split("T")[0];
+  const { data } = await sb
+    .from("observations")
+    .select("id", { count: "exact" })
+    .gte("created_at", today)
+    .lt("created_at", today + "T23:59:59.999Z");
+  return data?.length ?? 0;
 }
 
 export async function getChildContext(childId: string) {
