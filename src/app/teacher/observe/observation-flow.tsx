@@ -1,5 +1,10 @@
 "use client";
 
+/* Web Speech API types (not in all TS libs) */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type SpeechRecognitionType = any;
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
@@ -48,7 +53,7 @@ export function ObservationFlow({
   // Voice input
   const [isListening, setIsListening] = useState(false);
   const [hasVoiceSupport, setHasVoiceSupport] = useState(false);
-  const recognitionRef = useRef<null | SpeechRecognition>(null);
+  const recognitionRef = useRef<SpeechRecognitionType>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -79,9 +84,9 @@ export function ObservationFlow({
   };
 
   const startListening = () => {
-    const SR =
-      (window as unknown as { webkitSpeechRecognition?: typeof SpeechRecognition })
-        .webkitSpeechRecognition ?? window.SpeechRecognition;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const SR = w.webkitSpeechRecognition ?? w.SpeechRecognition;
     if (!SR) return;
 
     const recognition = new SR();
@@ -89,7 +94,8 @@ export function ObservationFlow({
     recognition.interimResults = false;
     recognition.lang = "en-US";
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
       let transcript = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         transcript += event.results[i][0].transcript;
