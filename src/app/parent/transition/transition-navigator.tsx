@@ -794,16 +794,16 @@ function ReadinessTab({
                           cfg.text
                             .replace("text-domain-", "")
                             .includes("language")
-                            ? "#5A6E50"
+                            ? "#0068B0"
                             : cfg.text.includes("motor")
-                              ? "#4A6180"
+                              ? "#1B7D2E"
                               : cfg.text.includes("social")
-                                ? "#8B5E3C"
+                                ? "#6B4FA0"
                                 : cfg.text.includes("cognitive")
-                                  ? "#6B5080"
+                                  ? "#9E8600"
                                   : cfg.text.includes("creative")
-                                    ? "#8B7530"
-                                    : "#8C7E6E",
+                                    ? "#C62828"
+                                    : "#6B7280",
                       }}
                     />
                   </div>

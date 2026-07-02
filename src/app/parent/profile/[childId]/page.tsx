@@ -94,7 +94,7 @@ export default async function ChildProfilePage({
         {/* Hero card */}
         <div className="bg-white rounded-2xl shadow-sm p-5 mb-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-rust/20 to-golden/20 flex items-center justify-center text-2xl font-bold text-espresso shrink-0">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-rust/20 to-[#47B3FF]/20 flex items-center justify-center text-2xl font-bold text-espresso shrink-0">
               {child.name.charAt(0)}
             </div>
             <div className="flex-1 min-w-0">

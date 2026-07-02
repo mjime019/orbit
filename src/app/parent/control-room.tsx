@@ -188,7 +188,7 @@ export function ControlRoom({
             </Link>
             <Link
               href={`/parent/profile/${child.id}`}
-              className="w-11 h-11 rounded-full border-2 border-rust/20 bg-gradient-to-br from-rust to-[#E8945A] text-white text-lg font-bold flex items-center justify-center font-[family-name:var(--font-playfair)]"
+              className="w-11 h-11 rounded-full border-2 border-rust/20 bg-gradient-to-br from-rust to-[#47B3FF] text-white text-lg font-bold flex items-center justify-center font-[family-name:var(--font-playfair)]"
             >
               {childName.charAt(0)}
             </Link>

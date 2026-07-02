@@ -124,7 +124,7 @@ export function GrowthTimeline({ chapters, childName }: Props) {
 
                     {/* Highlight */}
                     {ch.highlight_text && (
-                      <div className="bg-gradient-to-br from-rust/8 to-golden/8 rounded-xl px-4 py-3">
+                      <div className="bg-gradient-to-br from-rust/8 to-[#47B3FF]/8 rounded-xl px-4 py-3">
                         <div className="flex items-center gap-1.5 mb-1.5">
                           <span className="text-base">
                             {ch.highlight_icon || "✨"}
@@ -223,7 +223,7 @@ export function GrowthTimeline({ chapters, childName }: Props) {
       })}
 
       {/* Looking Ahead CTA */}
-      <div className="mt-4 p-5 rounded-2xl bg-gradient-to-br from-rust/8 via-sand to-sage/8 border border-sand-dark/30">
+      <div className="mt-4 p-5 rounded-2xl bg-gradient-to-br from-rust/8 via-white to-sage/8 border border-sand-dark/30">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xl">🎓</span>
           <span className="font-[family-name:var(--font-playfair)] text-base font-semibold text-espresso">

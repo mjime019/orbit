@@ -142,7 +142,7 @@ export default async function TeacherDashboardPage() {
               href={`/teacher/growth/${child.id}`}
               className={`flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-all fade-up delay-${Math.min(i + 1, 6)}`}
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-rust/15 to-golden/15 flex items-center justify-center text-sm font-bold text-espresso shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-rust/15 to-[#47B3FF]/15 flex items-center justify-center text-sm font-bold text-espresso shrink-0">
                 {child.name.charAt(0)}
               </div>
               <div className="flex-1 min-w-0">

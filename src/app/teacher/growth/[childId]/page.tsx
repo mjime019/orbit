@@ -47,7 +47,7 @@ export default async function GrowthJourneyPage({
         {/* Stats card */}
         <div className="bg-white rounded-2xl shadow-sm p-5 mb-6">
           <div className="flex items-center gap-3.5 mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rust/20 to-golden/20 flex items-center justify-center text-xl font-bold text-espresso shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rust/20 to-[#47B3FF]/20 flex items-center justify-center text-xl font-bold text-espresso shrink-0">
               {child.name.charAt(0)}
             </div>
             <div>

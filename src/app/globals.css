@@ -2,33 +2,36 @@
 
 @theme inline {
   /* Page backgrounds */
-  --color-cream: #FAF8F5;
-  --color-sand: #F5F0EB;
-  --color-sand-dark: #E8E0D8;
+  --color-cream: #FFFFFF;
+  --color-sand: #F5F5F5;
+  --color-sand-dark: #E0E0E0;
 
   /* Text */
-  --color-warm-gray: #8C7E6E;
-  --color-espresso: #3C2A1A;
+  --color-warm-gray: #6B7280;
+  --color-espresso: #1A1A2E;
 
   /* Accents */
-  --color-rust: #B85C38;
-  --color-sage: #7A8B6F;
-  --color-sky: #6B9BC3;
-  --color-golden: #D4A843;
+  --color-rust: #0090F3;
+  --color-sage: #22C55E;
+  --color-sky: #0090F3;
+  --color-golden: #DEE51F;
+
+  /* New brand accents */
+  --color-lavender: #C9B8F8;
 
   /* Domain colors */
-  --color-domain-language-bg: #EBF0E8;
-  --color-domain-language-text: #5A6E50;
-  --color-domain-motor-bg: #E8EEF5;
-  --color-domain-motor-text: #4A6180;
-  --color-domain-social-bg: #F5EDE8;
-  --color-domain-social-text: #8B5E3C;
-  --color-domain-cognitive-bg: #F0EBF5;
-  --color-domain-cognitive-text: #6B5080;
-  --color-domain-creative-bg: #FFF8E8;
-  --color-domain-creative-text: #8B7530;
-  --color-domain-sel-bg: #FDE8E8;
-  --color-domain-sel-text: #8B3C3C;
+  --color-domain-language-bg: #E8F4FD;
+  --color-domain-language-text: #0068B0;
+  --color-domain-motor-bg: #E8F5E9;
+  --color-domain-motor-text: #1B7D2E;
+  --color-domain-social-bg: #EDE7F6;
+  --color-domain-social-text: #6B4FA0;
+  --color-domain-cognitive-bg: #FFF8E1;
+  --color-domain-cognitive-text: #9E8600;
+  --color-domain-creative-bg: #FCE4EC;
+  --color-domain-creative-text: #C62828;
+  --color-domain-sel-bg: #F3E5F5;
+  --color-domain-sel-text: #7B1FA2;
 
   /* Fonts */
   --font-display: var(--font-playfair);
@@ -83,4 +86,14 @@ body {
 
 .typing-dot {
   animation: typingDot 1.4s ease-in-out infinite;
+}
+
+/* Recording pulse */
+@keyframes recordingPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.4); }
+}
+
+.recording-pulse {
+  animation: recordingPulse 1.2s ease-in-out infinite;
 }

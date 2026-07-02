@@ -1,6 +1,6 @@
 # CLAUDE.md — Orbit App (Session Handoff, July 2, 2026)
 
-> Committed copy of the session handoff so it travels with the git repo. The canonical project spec lives one level up in the Voyager folder (`../CLAUDE.md`, not a git repo — Google Drive-synced); if you have that folder, read it first and note its own "SESSION HANDOFF" section, which is identical to this one. If you only have this repo, the condensed context below is enough to work.
+> Committed copy of the session handoff so it travels with the git repo. Since July 2, 2026 this repo lives at `~/Projects/orbit` (local, outside all sync agents — Google Drive sync corrupted the previous checkout). The canonical project spec and all docs (`software/`, `business/`, `analysis/`) live in the Google Drive Voyager folder (`~/Library/CloudStorage/GoogleDrive-mjime019@gmail.com/My Drive/0 Orbit/09 Voyager/CLAUDE.md`); if you have that folder, read it first and note its own "SESSION HANDOFF" section, which matches this one. If you only have this repo, the condensed context below is enough to work.
 
 ## What Orbit is (condensed)
 

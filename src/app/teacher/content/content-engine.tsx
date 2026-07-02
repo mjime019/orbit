@@ -326,7 +326,7 @@ export function ContentEngine({
                   onClick={() => selectChild(child)}
                   className={`fade-up delay-${Math.min(i + 1, 6)} flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all active:scale-95`}
                 >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-rust to-[#E8945A] text-white text-lg font-bold flex items-center justify-center font-[family-name:var(--font-playfair)]">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-rust to-[#47B3FF] text-white text-lg font-bold flex items-center justify-center font-[family-name:var(--font-playfair)]">
                     {child.name.charAt(0)}
                   </div>
                   <span className="text-xs font-semibold text-espresso">
@@ -357,7 +357,7 @@ export function ContentEngine({
             >
               &larr;
             </button>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rust to-[#E8945A] text-white text-sm font-bold flex items-center justify-center font-[family-name:var(--font-playfair)]">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rust to-[#47B3FF] text-white text-sm font-bold flex items-center justify-center font-[family-name:var(--font-playfair)]">
               {selectedChild?.name.charAt(0)}
             </div>
             <div className="flex-1">

@@ -114,7 +114,7 @@ export function ConciergeChat({
             {"\u2190"}
           </Link>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rust to-golden flex items-center justify-center text-white text-sm font-bold">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rust to-[#47B3FF] flex items-center justify-center text-white text-sm font-bold">
               O
             </div>
             <div>
