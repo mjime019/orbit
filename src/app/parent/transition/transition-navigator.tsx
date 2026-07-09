@@ -119,6 +119,16 @@ const CATEGORY_COLORS: Record<string, string> = {
   prep: "bg-domain-creative-bg text-domain-creative-text",
 };
 
+function readSavedChecks(): Set<string> {
+  try {
+    return new Set<string>(
+      JSON.parse(localStorage.getItem("orbit-timeline-checks") ?? "[]")
+    );
+  } catch {
+    return new Set();
+  }
+}
+
 export function TransitionNavigator({
   schools,
   childName,
@@ -131,14 +141,11 @@ export function TransitionNavigator({
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [expandedSchool, setExpandedSchool] = useState<string | null>(null);
 
-  // Load checked items from localStorage
+  // Load checked items from localStorage. Must run in an effect (not a
+  // useState initializer) so the SSR HTML matches the first client render.
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("orbit-timeline-checks");
-      if (saved) setCheckedItems(new Set(JSON.parse(saved)));
-    } catch {
-      // ignore
-    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCheckedItems(readSavedChecks());
   }, []);
 
   function toggleCheck(id: string) {
