@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI } from "@/lib/ai";
+import { requireCampKey } from "@/lib/camp-auth";
 
 function buildSystemPrompt(teacherName: string) {
   return `You are a warm, curious observation assistant helping ${teacherName} (a camp teacher) capture richer details about Felipe (age 3) and Rafael (age 4) at their summer camp.
@@ -57,6 +58,9 @@ function fallbackFollowups(transcript: string) {
 }
 
 export async function POST(req: NextRequest) {
+  const unauthorized = requireCampKey(req);
+  if (unauthorized) return unauthorized;
+
   try {
     const { transcript, observations, teacherName } = await req.json();
 
@@ -70,7 +74,17 @@ export async function POST(req: NextRequest) {
     const systemPrompt = buildSystemPrompt(teacherName || "Carla");
     const userMessage = `${teacherName || "Carla"}'S DESCRIPTION:\n${transcript}\n\nEXTRACTED OBSERVATIONS:\n${JSON.stringify(observations, null, 2)}`;
 
-    const result = await callAI(systemPrompt, userMessage, { maxOutputTokens: 2000 });
+    let result: string;
+    try {
+      ({ text: result } = await callAI(systemPrompt, userMessage, {
+        maxOutputTokens: 2000,
+      }));
+    } catch {
+      // Follow-up questions are optional decoration — degrade to the canned
+      // generic questions (no fabricated child content) rather than blocking
+      // the capture flow. Marked so the UI can tell.
+      return NextResponse.json({ ...fallbackFollowups(transcript), degraded: true });
+    }
 
     let parsed;
     try {

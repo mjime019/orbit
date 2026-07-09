@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callAI } from "@/lib/ai";
+import { callAI, AIUnavailableError } from "@/lib/ai";
+import { requireCampKey } from "@/lib/camp-auth";
 
 function buildSystemPrompt(teacherName: string) {
   return `You are an early childhood observation assistant for a small summer camp in Miami. A teacher named ${teacherName} is describing their day with the kids. They speak naturally about the whole day — multiple kids, multiple activities. Your job is to extract structured developmental observations for TWO specific children only: Felipe (age 3) and Rafael (age 4).
@@ -99,6 +100,9 @@ function normalizeObservations(parsed: Record<string, unknown>, transcript: stri
 }
 
 export async function POST(req: NextRequest) {
+  const unauthorized = requireCampKey(req);
+  if (unauthorized) return unauthorized;
+
   try {
     const { transcript, teacherName } = await req.json();
 
@@ -110,7 +114,18 @@ export async function POST(req: NextRequest) {
     }
 
     const systemPrompt = buildSystemPrompt(teacherName || "Carla");
-    const result = await callAI(systemPrompt, transcript, { maxOutputTokens: 4000 });
+
+    let result: string;
+    try {
+      ({ text: result } = await callAI(systemPrompt, transcript, {
+        maxOutputTokens: 4000,
+      }));
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "AI service unavailable";
+      const status = err instanceof AIUnavailableError ? err.status : 502;
+      return NextResponse.json({ error: message }, { status });
+    }
 
     // Try to parse the JSON response
     let parsed;
@@ -119,10 +134,11 @@ export async function POST(req: NextRequest) {
       const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       parsed = JSON.parse(cleaned);
     } catch {
-      // If AI returned non-JSON, build a basic structure from the transcript
-      return NextResponse.json({
-        observations: normalizeObservations({}, transcript),
-      });
+      // Surface it — never fabricate observations from an unreadable response.
+      return NextResponse.json(
+        { error: "AI returned an unreadable response. Your words are saved — try again." },
+        { status: 502 }
+      );
     }
 
     // Normalize to expected format (handles mock fallback)

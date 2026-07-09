@@ -105,19 +105,46 @@ export default function CampPage() {
   const [anythingElseInterim, setAnythingElseInterim] = useState("");
   const [anythingElseTextInput, setAnythingElseTextInput] = useState("");
   const [allFollowupText, setAllFollowupText] = useState("");
+  const [campKey, setCampKey] = useState("");
+  const [campKeyInput, setCampKeyInput] = useState("");
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const transcriptRef = useRef("");
+  const recordingActiveRef = useRef(false);
+  const savedIdRef = useRef<string | null>(null);
+  const finalFollowupRef = useRef("");
 
   // Keep ref in sync for use in callbacks
   useEffect(() => {
     transcriptRef.current = transcript;
   }, [transcript]);
 
+  // Access code persists per device so the teacher enters it once.
+  useEffect(() => {
+    setCampKey(localStorage.getItem("camp_key") ?? "");
+  }, []);
+
+  const campFetch = useCallback(
+    async (path: string, body: unknown) => {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-camp-key": campKey },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 401) {
+        localStorage.removeItem("camp_key");
+        setCampKey("");
+        throw new Error("Access code rejected — re-enter it on the start screen.");
+      }
+      return res;
+    },
+    [campKey]
+  );
+
   // ─── Speech recognition setup ──────────────────────────────────
   const startRecognition = useCallback(
-    (onResult: (final: string, interim: string) => void, onEnd: () => void) => {
+    (onResult: (final: string, interim: string) => void) => {
       const SpeechRecognition =
         window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -126,36 +153,62 @@ export default function CampPage() {
         return null;
       }
 
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = "en-US";
+      recordingActiveRef.current = true;
+      let rapidEnds = 0;
+      let lastStart = Date.now();
 
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let final = "";
-        let interim = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const t = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            final += t + " ";
-          } else {
-            interim += t;
+      const spawn = (): SpeechRecognitionInstance => {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = "en-US";
+
+        recognition.onresult = (event: SpeechRecognitionEvent) => {
+          let final = "";
+          let interim = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const t = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              final += t + " ";
+            } else {
+              interim += t;
+            }
           }
-        }
-        onResult(final, interim);
+          onResult(final, interim);
+        };
+
+        recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+          console.error("Speech error:", event.error);
+          if (event.error === "not-allowed" || event.error === "service-not-available") {
+            recordingActiveRef.current = false;
+            setUseTextInput(true);
+          }
+          // Other errors ("no-speech", "aborted", "network") fall through to
+          // onend, which restarts while the teacher still has the mic open.
+        };
+
+        recognition.onend = () => {
+          // Browsers stop recognition after a few seconds of silence; restart
+          // so the mic doesn't die mid-thought while the timer keeps running.
+          if (!recordingActiveRef.current) return;
+          rapidEnds = Date.now() - lastStart < 1000 ? rapidEnds + 1 : 0;
+          if (rapidEnds >= 3) {
+            // Ending immediately several times in a row means it's genuinely
+            // failing, not pausing on silence — switch to typing so nothing
+            // more is lost.
+            recordingActiveRef.current = false;
+            setUseTextInput(true);
+            return;
+          }
+          lastStart = Date.now();
+          recognitionRef.current = spawn();
+        };
+
+        recognition.start();
+        return recognition;
       };
 
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error("Speech error:", event.error);
-        if (event.error === "not-allowed" || event.error === "service-not-available") {
-          setUseTextInput(true);
-        }
-      };
-
-      recognition.onend = onEnd;
-
-      recognition.start();
-      return recognition;
+      return spawn();
     },
     []
   );
@@ -183,22 +236,17 @@ export default function CampPage() {
     setError("");
     startTimer();
 
-    const rec = startRecognition(
-      (final, interim) => {
-        if (final) setTranscript((prev) => prev + final);
-        setInterimText(interim);
-      },
-      () => {
-        // Auto-restart if still in recording step
-        // (recognition can stop on silence on some browsers)
-      }
-    );
+    const rec = startRecognition((final, interim) => {
+      if (final) setTranscript((prev) => prev + final);
+      setInterimText(interim);
+    });
     recognitionRef.current = rec;
   };
 
   // ─── Step 2→review: Stop recording, show transcript for editing ──
   const handleStopRecording = () => {
     stopTimer();
+    recordingActiveRef.current = false;
     if (recognitionRef.current) {
       recognitionRef.current.onend = null;
       recognitionRef.current.stop();
@@ -223,35 +271,62 @@ export default function CampPage() {
     }
 
     setStep("processing");
+    setError("");
+
+    // Persist the raw transcript FIRST — a failed AI call must never lose
+    // the teacher's words. Later saves update this same row.
+    try {
+      const saveRes = await campFetch("/api/camp/save", {
+        id: savedIdRef.current ?? undefined,
+        transcript,
+        followupTranscript: "",
+        observations: null,
+        teacherName,
+        date: new Date().toISOString().split("T")[0],
+      });
+      const saveData = await saveRes.json();
+      if (!saveRes.ok) throw new Error(saveData.error || "Save failed");
+      savedIdRef.current = saveData.id;
+    } catch (err) {
+      setError(
+        (err instanceof Error ? err.message : "Couldn't save the recording.") +
+          " Your words are still below — tap submit to retry."
+      );
+      setStep("review");
+      return;
+    }
 
     try {
       // Process observation
-      const processRes = await fetch("/api/camp/process", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript, teacherName }),
+      const processRes = await campFetch("/api/camp/process", {
+        transcript,
+        teacherName,
       });
       const processData = await processRes.json();
 
-      if (processData.error && !processData.observations) {
-        setError(processData.error);
-        setStep("ready");
+      if (!processRes.ok || (processData.error && !processData.observations)) {
+        setError(
+          `${processData.error || "Couldn't process the recording."} Your recording is saved — tap submit to retry.`
+        );
+        setStep("review");
         return;
       }
 
       setObservations(processData.observations);
 
-      // Get follow-up questions
-      const followupRes = await fetch("/api/camp/followup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      // Get follow-up questions (optional — failures fall through to
+      // "anything else?")
+      let followupData: { followups?: FollowupQuestion[] } = {};
+      try {
+        const followupRes = await campFetch("/api/camp/followup", {
           transcript,
           observations: processData.observations,
           teacherName,
-        }),
-      });
-      const followupData = await followupRes.json();
+        });
+        if (followupRes.ok) followupData = await followupRes.json();
+      } catch {
+        // Follow-ups are optional decoration; the transcript is already saved.
+      }
 
       if (followupData.followups && followupData.followups.length > 0) {
         setFollowups(followupData.followups);
@@ -267,8 +342,10 @@ export default function CampPage() {
       }
     } catch (err) {
       console.error(err);
-      setError("Something went wrong processing the observation. Please try again.");
-      setStep("ready");
+      setError(
+        "Couldn't process the recording — it's saved. Tap submit to retry."
+      );
+      setStep("review");
     }
   };
 
@@ -280,19 +357,17 @@ export default function CampPage() {
     setFollowupTextInput("");
     startTimer();
 
-    const rec = startRecognition(
-      (final, interim) => {
-        if (final) setFollowupTranscript((prev) => prev + final);
-        setFollowupInterim(interim);
-      },
-      () => {}
-    );
+    const rec = startRecognition((final, interim) => {
+      if (final) setFollowupTranscript((prev) => prev + final);
+      setFollowupInterim(interim);
+    });
     recognitionRef.current = rec;
   };
 
   // ─── Follow-up: Stop recording → go to review ──────────────
   const handleStopFollowupRecording = () => {
     stopTimer();
+    recordingActiveRef.current = false;
     if (recognitionRef.current) {
       recognitionRef.current.onend = null;
       recognitionRef.current.stop();
@@ -359,18 +434,16 @@ export default function CampPage() {
     setAnythingElseTextInput("");
     startTimer();
 
-    const rec = startRecognition(
-      (final, interim) => {
-        if (final) setAnythingElseTranscript((prev) => prev + final);
-        setAnythingElseInterim(interim);
-      },
-      () => {}
-    );
+    const rec = startRecognition((final, interim) => {
+      if (final) setAnythingElseTranscript((prev) => prev + final);
+      setAnythingElseInterim(interim);
+    });
     recognitionRef.current = rec;
   };
 
   const handleStopAnythingElse = () => {
     stopTimer();
+    recordingActiveRef.current = false;
     if (recognitionRef.current) {
       recognitionRef.current.onend = null;
       recognitionRef.current.stop();
@@ -396,62 +469,74 @@ export default function CampPage() {
 
   // ─── Final save + process ───────────────────────────────────
   const finalSaveAndProcess = async (fullFollowup: string) => {
-    if (!fullFollowup) {
-      setStep("done");
-      saveObservation(transcript, "", observations);
-      return;
-    }
-
+    finalFollowupRef.current = fullFollowup;
     setStep("processing-final");
 
-    const combinedTranscript = `${transcript}\n\n[Follow-up responses from ${teacherName}]:\n${fullFollowup}`;
+    // Words first: persist transcript + follow-ups before any further AI work.
+    const ok = await saveObservation(transcript, fullFollowup, observations);
 
-    try {
-      const processRes = await fetch("/api/camp/process", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: combinedTranscript, teacherName }),
-      });
-      const processData = await processRes.json();
-
-      if (processData.observations) {
-        setObservations(processData.observations);
+    // Best-effort: re-extract with the follow-up context and refresh the row.
+    // The words are already durable, so a failure here costs nothing.
+    if (ok && fullFollowup) {
+      try {
+        const combinedTranscript = `${transcript}\n\n[Follow-up responses from ${teacherName}]:\n${fullFollowup}`;
+        const processRes = await campFetch("/api/camp/process", {
+          transcript: combinedTranscript,
+          teacherName,
+        });
+        const processData = await processRes.json();
+        if (processRes.ok && processData.observations) {
+          setObservations(processData.observations);
+          await saveObservation(transcript, fullFollowup, processData.observations);
+        }
+      } catch {
+        // Keep the first-pass observations already saved above.
       }
-
-      setStep("done");
-      saveObservation(transcript, fullFollowup, processData.observations || observations);
-    } catch {
-      setStep("done");
-      saveObservation(transcript, fullFollowup, observations);
     }
+
+    setStep("done");
   };
 
-  // ─── Save observation ──────────────────────────────────────────
+  // ─── Save observation (returns whether the words are durably stored) ──
   const saveObservation = async (
     mainTranscript: string,
     followup: string,
     obs: Observations | null
-  ) => {
+  ): Promise<boolean> => {
     try {
-      await fetch("/api/camp/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          transcript: mainTranscript,
-          followupTranscript: followup,
-          observations: obs,
-          teacherName,
-          date: new Date().toISOString().split("T")[0],
-        }),
+      const res = await campFetch("/api/camp/save", {
+        id: savedIdRef.current ?? undefined,
+        transcript: mainTranscript,
+        followupTranscript: followup,
+        observations: obs,
+        teacherName,
+        date: new Date().toISOString().split("T")[0],
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Save failed");
+      if (data.id) savedIdRef.current = data.id;
       setSaved(true);
+      setError("");
+      return true;
     } catch (err) {
       console.error("Failed to save:", err);
+      setSaved(false);
+      setError(
+        err instanceof Error ? err.message : "Couldn't save the observation."
+      );
+      return false;
     }
+  };
+
+  const handleRetrySave = () => {
+    saveObservation(transcript, finalFollowupRef.current, observations);
   };
 
   // ─── Start over ────────────────────────────────────────────────
   const handleReset = () => {
+    savedIdRef.current = null;
+    finalFollowupRef.current = "";
+    recordingActiveRef.current = false;
     setStep("ready");
     setTranscript("");
     setInterimText("");
@@ -512,6 +597,34 @@ export default function CampPage() {
         {/* ─── STEP: Ready ─────────────────────────────────── */}
         {step === "ready" && (
           <div className="fade-up">
+            {/* Access code gate */}
+            {!campKey && (
+              <div className="bg-sand rounded-2xl p-5 mb-6">
+                <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">
+                  Access code
+                </p>
+                <input
+                  type="password"
+                  value={campKeyInput}
+                  onChange={(e) => setCampKeyInput(e.target.value)}
+                  placeholder="Enter the camp access code"
+                  className="w-full bg-white rounded-xl p-3 text-sm text-espresso outline-none border border-sand-dark/50 focus:border-rust/50 transition-colors"
+                />
+                <button
+                  onClick={() => {
+                    const key = campKeyInput.trim();
+                    if (!key) return;
+                    localStorage.setItem("camp_key", key);
+                    setCampKey(key);
+                    setCampKeyInput("");
+                  }}
+                  className="mt-3 w-full py-2.5 bg-rust text-white rounded-full text-sm font-medium hover:bg-rust/90 active:scale-95 transition-all"
+                >
+                  Unlock
+                </button>
+              </div>
+            )}
+
             {/* Day flow memory triggers */}
             <div className="bg-sand rounded-2xl p-5 mb-6">
               <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">
@@ -538,7 +651,8 @@ export default function CampPage() {
             <div className="flex flex-col items-center gap-4">
               <button
                 onClick={handleStartRecording}
-                className="w-24 h-24 rounded-full bg-rust text-white flex items-center justify-center shadow-lg hover:bg-rust/90 active:scale-95 transition-all"
+                disabled={!campKey}
+                className="w-24 h-24 rounded-full bg-rust text-white flex items-center justify-center shadow-lg hover:bg-rust/90 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
               >
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
@@ -674,13 +788,10 @@ export default function CampPage() {
                 onClick={() => {
                   setStep("recording");
                   startTimer();
-                  const rec = startRecognition(
-                    (final, interim) => {
-                      if (final) setTranscript((prev) => prev + final);
-                      setInterimText(interim);
-                    },
-                    () => {}
-                  );
+                  const rec = startRecognition((final, interim) => {
+                    if (final) setTranscript((prev) => prev + final);
+                    setInterimText(interim);
+                  });
                   recognitionRef.current = rec;
                 }}
                 className="text-sm text-warm-gray underline underline-offset-2"
@@ -862,13 +973,10 @@ export default function CampPage() {
                   setFollowupTranscript("");
                   setFollowupInterim("");
                   startTimer();
-                  const rec = startRecognition(
-                    (final, interim) => {
-                      if (final) setFollowupTranscript((prev) => prev + final);
-                      setFollowupInterim(interim);
-                    },
-                    () => {}
-                  );
+                  const rec = startRecognition((final, interim) => {
+                    if (final) setFollowupTranscript((prev) => prev + final);
+                    setFollowupInterim(interim);
+                  });
                   recognitionRef.current = rec;
                 }}
                 className="text-sm text-warm-gray underline underline-offset-2"
@@ -991,13 +1099,10 @@ export default function CampPage() {
                   setAnythingElseTranscript("");
                   setAnythingElseInterim("");
                   startTimer();
-                  const rec = startRecognition(
-                    (final, interim) => {
-                      if (final) setAnythingElseTranscript((prev) => prev + final);
-                      setAnythingElseInterim(interim);
-                    },
-                    () => {}
-                  );
+                  const rec = startRecognition((final, interim) => {
+                    if (final) setAnythingElseTranscript((prev) => prev + final);
+                    setAnythingElseInterim(interim);
+                  });
                   recognitionRef.current = rec;
                 }}
                 className="text-sm text-warm-gray underline underline-offset-2"
@@ -1017,10 +1122,22 @@ export default function CampPage() {
                 Thanks, {teacherName}!
               </h2>
               <p className="text-sm text-warm-gray mt-2">
-                Your observations have been saved. I&apos;ll follow up with you on what we learned.
+                {saved
+                  ? "Your observations have been saved. I'll follow up with you on what we learned."
+                  : "We hit a snag saving — your words are safe on this device until it works."}
               </p>
-              {saved && (
+              {saved ? (
                 <p className="text-xs text-sage mt-3">Saved successfully</p>
+              ) : (
+                <div className="mt-3">
+                  {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
+                  <button
+                    onClick={handleRetrySave}
+                    className="text-xs text-rust underline underline-offset-2"
+                  >
+                    Retry save
+                  </button>
+                </div>
               )}
             </div>
 
