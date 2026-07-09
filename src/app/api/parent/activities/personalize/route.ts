@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callAI } from "@/lib/ai";
+import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildActivityPersonalizationPrompt } from "@/lib/prompts";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { getChildContext, getRecentObservations } from "@/lib/queries";
@@ -55,21 +55,14 @@ export async function POST(request: NextRequest) {
 
   let whyItFits: string;
   try {
-    whyItFits = await callAI(systemPrompt, activityDetails);
-    // Strip quotes if the mock/AI wraps it
+    ({ text: whyItFits } = await callAI(systemPrompt, activityDetails));
+    // Strip quotes if the model wraps it
     whyItFits = whyItFits.replace(/^["']|["']$/g, "").trim();
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "AI service unavailable";
-    const isRateLimit = message.includes("429") || message.includes("quota");
-    return NextResponse.json(
-      {
-        error: isRateLimit
-          ? "AI rate limit reached. Please try again in a few seconds."
-          : message,
-      },
-      { status: isRateLimit ? 429 : 502 }
-    );
+    const status = err instanceof AIUnavailableError ? err.status : 502;
+    return NextResponse.json({ error: message }, { status });
   }
 
   // Save back to the recommendation if we have a recommendationId

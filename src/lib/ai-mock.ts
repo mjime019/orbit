@@ -1,5 +1,5 @@
 /**
- * Mock AI response generator for development when Gemini API is unavailable.
+ * Mock AI response generator for local development (opt-in via AI_MODE=mock).
  *
  * Uses seed-data patterns as templates. The mock analyzes the user message
  * (which contains the teacher's note or observation JSON) to produce

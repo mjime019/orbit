@@ -1,76 +1,79 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { GoogleGenAI } from "@google/genai";
 import { generateMockResponse } from "./ai-mock";
 
-// ── Anthropic (primary) ──
+// Claude Haiku 4.5 — the only AI provider. (The former Google fallback was
+// removed Jul 2026: its model had been retired, and the fallback transmitted
+// child data before erroring.)
+const MODEL = "claude-haiku-4-5-20251001";
+
 const anthropicKey = process.env.ANTHROPIC_API_KEY;
 const anthropic = anthropicKey ? new Anthropic({ apiKey: anthropicKey }) : null;
 
-// ── Gemini (fallback) ──
-const geminiKey = process.env.GEMINI_API_KEY;
-const gemini =
-  geminiKey && geminiKey !== "mock" && geminiKey !== ""
-    ? new GoogleGenAI({ apiKey: geminiKey })
-    : null;
+// Mock is opt-in for local dev only (AI_MODE=mock). It is never a silent
+// fallback: a real AI failure must surface to the caller, not fabricate
+// child-specific content.
+const mockMode = process.env.AI_MODE === "mock";
+
+export interface AIResult {
+  text: string;
+  source: "anthropic" | "mock";
+}
+
+export class AIUnavailableError extends Error {
+  readonly rateLimited: boolean;
+  /** Suggested HTTP status for routes surfacing this error. */
+  readonly status: number;
+
+  constructor(message: string, rateLimited = false) {
+    super(message);
+    this.name = "AIUnavailableError";
+    this.rateLimited = rateLimited;
+    this.status = rateLimited ? 429 : 502;
+  }
+}
 
 export async function callAI(
   systemPrompt: string,
   userMessage: string,
   options?: { maxOutputTokens?: number }
-): Promise<string> {
-  const maxTokens = options?.maxOutputTokens ?? 1000;
-
-  // ── Try Anthropic first (Claude Haiku 3.5) ──
-  if (anthropic) {
-    try {
-      const response = await anthropic.messages.create({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: maxTokens,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userMessage }],
-      });
-      const text = response.content
-        .filter((b) => b.type === "text")
-        .map((b) => b.text)
-        .join("");
-      return text;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.warn("[AI] Anthropic error, trying Gemini fallback:", message);
-      // Fall through to Gemini
-    }
+): Promise<AIResult> {
+  if (mockMode) {
+    return {
+      text: generateMockResponse(systemPrompt, userMessage),
+      source: "mock",
+    };
   }
 
-  // ── Try Gemini (fallback) ──
-  if (gemini) {
-    try {
-      const response = await gemini.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: userMessage,
-        config: {
-          systemInstruction: systemPrompt,
-          maxOutputTokens: maxTokens,
-        },
-      });
-      return response.text ?? "";
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      const isQuotaError =
-        message.includes("429") ||
-        message.includes("quota") ||
-        message.includes("RESOURCE_EXHAUSTED") ||
-        message.includes("rate limit");
-
-      if (isQuotaError) {
-        console.warn("[AI] Gemini quota exceeded — falling back to mock");
-      } else {
-        console.warn("[AI] Gemini error:", message);
-      }
-      // Fall through to mock
-    }
+  if (!anthropic) {
+    throw new AIUnavailableError(
+      "AI is not configured (ANTHROPIC_API_KEY missing). Set AI_MODE=mock for local development."
+    );
   }
 
-  // ── Mock (last resort) ──
-  console.log("[AI] Using mock response");
-  return generateMockResponse(systemPrompt, userMessage);
+  try {
+    const response = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: options?.maxOutputTokens ?? 1000,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMessage }],
+    });
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    return { text, source: "anthropic" };
+  } catch (err) {
+    // The SDK already retried transient failures (2x) before this throws —
+    // don't add another retry layer on top.
+    const rateLimited =
+      err instanceof Anthropic.APIError && err.status === 429;
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error("[AI] Anthropic error:", detail);
+    throw new AIUnavailableError(
+      rateLimited
+        ? "AI rate limit reached. Please try again in a few seconds."
+        : "AI service unavailable. Please try again.",
+      rateLimited
+    );
+  }
 }

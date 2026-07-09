@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callAI } from "@/lib/ai";
+import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildConciergePrompt } from "@/lib/prompts";
 import { createServerSupabase } from "@/lib/supabase-server";
 import {
@@ -80,8 +80,13 @@ export async function POST(request: NextRequest) {
     )
     .join("\n");
 
-  // 6. Build conversation history (exclude the message we just inserted)
-  const conversationHistory = history
+  // 6. Build conversation history (exclude the message we just inserted —
+  // it is passed separately as the user turn)
+  const priorHistory = history.filter(
+    (m, i) =>
+      !(i === history.length - 1 && m.role === "parent" && m.content === message)
+  );
+  const conversationHistory = priorHistory
     .slice(-18)
     .map((m) => `${m.role === "parent" ? "Parent" : "Orbit"}: ${m.content}`)
     .join("\n\n");
@@ -99,21 +104,14 @@ export async function POST(request: NextRequest) {
 
   let aiResponse: string;
   try {
-    aiResponse = await callAI(systemPrompt, message);
+    ({ text: aiResponse } = await callAI(systemPrompt, message));
     // Strip any wrapping quotes
     aiResponse = aiResponse.replace(/^["']|["']$/g, "").trim();
   } catch (err) {
     const errMsg =
       err instanceof Error ? err.message : "AI service unavailable";
-    const isRateLimit = errMsg.includes("429") || errMsg.includes("quota");
-    return NextResponse.json(
-      {
-        error: isRateLimit
-          ? "AI rate limit reached. Please try again in a few seconds."
-          : errMsg,
-      },
-      { status: isRateLimit ? 429 : 502 }
-    );
+    const status = err instanceof AIUnavailableError ? err.status : 502;
+    return NextResponse.json({ error: errMsg }, { status });
   }
 
   // 8. Insert AI response

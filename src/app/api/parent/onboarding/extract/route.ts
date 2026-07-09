@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callAI } from "@/lib/ai";
+import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildOnboardingExtractionPrompt } from "@/lib/prompts";
 import { createServerSupabase } from "@/lib/supabase-server";
 import type { OnboardingExtraction } from "@/lib/types";
@@ -39,19 +39,12 @@ export async function POST(request: NextRequest) {
 
   let rawResponse: string;
   try {
-    rawResponse = await callAI(systemPrompt, response);
+    ({ text: rawResponse } = await callAI(systemPrompt, response));
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "AI service unavailable";
-    const isRateLimit = message.includes("429") || message.includes("quota");
-    return NextResponse.json(
-      {
-        error: isRateLimit
-          ? "AI rate limit reached. Please try again in a few seconds."
-          : message,
-      },
-      { status: isRateLimit ? 429 : 502 }
-    );
+    const status = err instanceof AIUnavailableError ? err.status : 502;
+    return NextResponse.json({ error: message }, { status });
   }
 
   // Parse JSON response

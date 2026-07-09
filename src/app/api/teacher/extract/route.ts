@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callAI } from "@/lib/ai";
+import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildObservationExtractionPrompt } from "@/lib/prompts";
 import { createServerSupabase } from "@/lib/supabase-server";
 import type { ObservationExtraction } from "@/lib/types";
@@ -54,18 +54,15 @@ export async function POST(request: NextRequest) {
 
   let rawResponse: string;
   try {
-    rawResponse = await callAI(systemPrompt, note);
+    ({ text: rawResponse } = await callAI(systemPrompt, note));
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "AI service unavailable";
-    const isRateLimit = message.includes("429") || message.includes("quota");
-    return NextResponse.json(
-      { error: isRateLimit ? "AI rate limit reached. Please try again in a few seconds." : message },
-      { status: isRateLimit ? 429 : 502 }
-    );
+    const status = err instanceof AIUnavailableError ? err.status : 502;
+    return NextResponse.json({ error: message }, { status });
   }
 
-  // Parse JSON — Gemini sometimes wraps in markdown code fences
+  // Parse JSON — the model sometimes wraps it in markdown code fences
   let extraction: ObservationExtraction;
   try {
     const cleaned = rawResponse

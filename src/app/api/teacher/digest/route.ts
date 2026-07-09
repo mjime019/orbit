@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callAI } from "@/lib/ai";
+import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildDigestPrompt } from "@/lib/prompts";
 import { getChildContext } from "@/lib/queries";
 import { createServerSupabase } from "@/lib/supabase-server";
@@ -73,19 +73,12 @@ export async function POST(request: NextRequest) {
 
   let rawResponse: string;
   try {
-    rawResponse = await callAI(systemPrompt, userMessage);
+    ({ text: rawResponse } = await callAI(systemPrompt, userMessage));
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "AI service unavailable";
-    const isRateLimit = message.includes("429") || message.includes("quota");
-    return NextResponse.json(
-      {
-        error: isRateLimit
-          ? "AI rate limit reached. Please try again in a few seconds."
-          : message,
-      },
-      { status: isRateLimit ? 429 : 502 }
-    );
+    const status = err instanceof AIUnavailableError ? err.status : 502;
+    return NextResponse.json({ error: message }, { status });
   }
 
   let generation: DigestGeneration;
