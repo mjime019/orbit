@@ -88,19 +88,39 @@ specific AI follow-up question → final save.
 - **2 TEST rows** in `camp_observations` (transcripts start with
   "TEST verification row, safe to delete") — delete in the dashboard.
 
-## Env checklist (Vercel dashboard — before/at push)
+## Env checklist (Vercel dashboard)
 
-1. `ANTHROPIC_API_KEY` — must exist in Production env. If it was never
-   there, the camp pilot ran on Gemini-or-mock; local `.env.local` has had
-   it since Mar 26, so Carla's extractions were likely real — but verify.
-2. `CAMP_ACCESS_KEY` — **add it** (new): `camp-c52bf761` (or pick your
-   own; also update `.env.local` if you change it). Without it, camp
-   routes fail closed (401) after deploy.
-3. `GEMINI_API_KEY` — **remove** (code no longer references it; already
-   removed from `.env.local`).
-4. `NEXT_PUBLIC_SUPABASE_ANON_KEY` — verified Jul 8 (browser audit):
-   exact match with Supabase's publishable key, NOT the service-role
-   secret. ROADMAP.md:141's "using service role key" is disproven.
+**Never record a secret's value in this file — it is committed to a public
+repo (github.com/mjime019/orbit). Values live in Vercel and `.env.local`
+(gitignored) only.** An earlier revision of this doc violated that; see
+"Secret leak" below.
+
+1. `ANTHROPIC_API_KEY` — **verified present** in Production (Jul 16, 110
+   chars, added 112d ago). The camp pilot ran on real Anthropic, not
+   Gemini-or-mock.
+2. `CAMP_ACCESS_KEY` — **verified present but EMPTY** in Production (Jul
+   16). An empty value makes `requireCampKey` fail closed, so every camp
+   request 401s, including ones sending the right code. Set a real value
+   in the Vercel dashboard, then redeploy for it to take effect.
+3. `GEMINI_API_KEY` — **verified removed** from Vercel (Jul 16); already
+   gone from `.env.local`.
+4. `NEXT_PUBLIC_SUPABASE_ANON_KEY` — verified Jul 8 (browser audit) and
+   re-confirmed Jul 16: 46 chars, matching `sb_publishable_…`; a
+   service-role JWT would be 200+. NOT the service-role secret.
+   ROADMAP.md:141's "using service role key" is disproven.
+
+## Secret leak (Jul 16, 2026) — resolved by rotation
+
+An earlier revision of this file recorded the proposed `CAMP_ACCESS_KEY`
+value in plaintext. It was committed and pushed to the **public** repo, so
+that value is permanently burned and must never be used. Blast radius was
+nil: the Vercel variable was empty the whole time, so the leaked string was
+never a working credential in production — it only ever matched local dev.
+
+Remediation: value scrubbed from this file; a fresh key was generated and
+set directly in Vercel + `.env.local`, never written to the repo. The old
+string remains in git history (public, unremovable in practice) but is
+worthless. Retrieve the current value from Vercel or `.env.local`.
 
 ## Before push (deploys to production)
 
