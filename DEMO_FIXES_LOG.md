@@ -1,5 +1,44 @@
 # DEMO_FIXES_LOG — July 8, 2026
 
+## ▶ RESUME HERE (paused evening of Jul 16, 2026, mid-GitHub-outage)
+
+**Production is live, verified, and demo-ready** at
+`orbit-seven-sandy.vercel.app` — deployment `orbit-l9py7agg0`, commit
+`4c0dd09`, shipped via `vercel --prod`. Nothing is broken; the work below
+is cleanup, not repair. **Camp access code: in Vercel + `.env.local`
+(`CAMP_ACCESS_KEY`) — never written here, see "Secret leak".**
+
+The earlier "GitHub auto-deploy didn't fire" anomaly was **a GitHub
+outage**, not a broken Vercel↔GitHub link. Nothing to fix there; just
+re-confirm once GitHub is healthy.
+
+To resume, in order:
+
+1. **Push the one unpushed commit** — `d802099` (log corrections; docs
+   only, no runtime effect). `git push origin main` from `~/Projects/orbit`.
+2. **Confirm auto-deploy recovered** — after that push, `npx vercel ls`
+   should show a NEW deployment within ~a minute. If it does, "push =
+   deploy" is healthy again and `4c0dd09`/`d802099` reconcile with the
+   git-linked flow. If it does not, the link needs a look (production is
+   fine either way — it already runs this code).
+3. **Supabase SQL editor** — add the missing policy so the camp save
+   updates its row instead of falling back to insert:
+   ```sql
+   create policy "anon_update_camp_observations" on camp_observations
+     for update to anon using (true) with check (true);
+   ```
+4. **Delete the 3 TEST rows** in `camp_observations` (transcripts begin
+   "TEST verification row, safe to delete").
+5. **Manual mic test** (the one gate no tool can run): open `/camp` on a
+   phone, record with a deliberate 5-second silence mid-sentence, confirm
+   speech capture resumes and the transcript survives.
+6. **Before any demo** — warm up Supabase (free tier auto-pauses after ~7
+   idle days); see "Demo runbook" in CLAUDE.md.
+
+Not blocking the demo, but next real work: the permissive anon RLS
+policies on core tables (fine for dummy data, must fix before real child
+data), then auth. See "Deferred / known-open".
+
 Demo-hardening session against the technical-DD P0 list. Mandate: make the
 deployed demo impossible to embarrass. All work committed locally on `main`
 (**not pushed** — pushing auto-deploys; see "Before push" below).
@@ -95,14 +134,14 @@ quote, `notable` reasoning). The demo-facing loop is green in production.
   "TEST verification row, safe to delete") — delete in the dashboard.
 - **GitHub auto-deploy did not fire** for the push of `4c0dd09` (Jul 16),
   though it fired normally for `6f92c89` an hour earlier from the same
-  author. The commit reached `origin/main` and Vercel simply never created
-  a deployment; production had to be shipped with `vercel --prod` from the
-  CLI. Deployments are not paused (the CLI deploy built fine). **The
-  "push = deploy" assumption is currently unreliable** — after any push,
-  confirm a new deployment exists (`npx vercel ls`) rather than assuming.
-  Worth checking the Vercel↔GitHub app connection in project settings.
-  Note this also means production now traces to a CLI deploy rather than a
-  git-linked one.
+  author. **Cause: a GitHub outage** — the webhook to Vercel never
+  delivered. Not a broken Vercel↔GitHub link and not paused deployments
+  (a `vercel --prod` CLI deploy built fine, and is how production shipped).
+  Lesson that outlives the outage: a missing deployment is silent — the
+  push succeeds and nothing reports the absent build. After a push,
+  confirm with `npx vercel ls` rather than assuming "push = deploy".
+  Note production currently traces to a CLI deploy, not a git-linked one;
+  the next successful auto-deploy reconciles that.
 
 ## Env checklist (Vercel dashboard)
 
