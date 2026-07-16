@@ -63,7 +63,7 @@ Pre-existing on the branch (from Jul 2): `d6dc7da` (session handoff doc),
 | Gate | Result |
 |---|---|
 | (a) zero `gemini\|GoogleGenAI\|GEMINI_API_KEY` hits in src/ + package.json | **PASS** (grep exit 1) |
-| (b) `/api/camp/save` without auth | **PASS locally**: GET/POST → 401 (no key, wrong key); data only with key. **Deployed check pending push** |
+| (b) `/api/camp/save` without auth | **PASS locally and DEPLOYED** (Jul 16): `GET /api/camp/save` → 401 with no key and with a wrong key; returns data only with the correct key. `POST /api/camp/process` → 401 without key |
 | (c) unset `ANTHROPIC_API_KEY` → visible error, zero mock | **PASS**: camp process + teacher extract → 502 `"AI is not configured (ANTHROPIC_API_KEY missing)…"`; `AI_MODE=mock` opt-in verified separately |
 | (d) transcript survives AI/network failure | **PASS (persistence half)**: full flow driven in browser — network order `save → process → followup`; save-failure path exercised for real (see below) and Retry save recovered. **Mic 5s-pause half needs a physical mic — manual test on your phone** |
 | (e) "Coming Up" shows only future events | **PASS**: seed events (Feb 27/Mar 4) are past → section correctly hidden. Add future-dated `school_calendar` rows for demo visibility |
@@ -72,6 +72,12 @@ Pre-existing on the branch (from Jul 2): `d6dc7da` (session handoff doc),
 Live end-to-end run (real Anthropic, live DB): text-input capture →
 extraction attributed Felipe/Rafael correctly with verbatim quote →
 specific AI follow-up question → final save.
+
+**Production verified (Jul 16, 2026)** on `orbit-seven-sandy.vercel.app`,
+deployment `orbit-l9py7agg0` (commit `4c0dd09`): `/parent` 200, `/camp`
+200, camp API 401 without key / 200 with it, and a live `/api/camp/process`
+round-trip returning real Claude output (per-child summaries, verbatim
+quote, `notable` reasoning). The demo-facing loop is green in production.
 
 ## Found during verification (new)
 
@@ -87,6 +93,16 @@ specific AI follow-up question → final save.
   session alongside the full row.
 - **2 TEST rows** in `camp_observations` (transcripts start with
   "TEST verification row, safe to delete") — delete in the dashboard.
+- **GitHub auto-deploy did not fire** for the push of `4c0dd09` (Jul 16),
+  though it fired normally for `6f92c89` an hour earlier from the same
+  author. The commit reached `origin/main` and Vercel simply never created
+  a deployment; production had to be shipped with `vercel --prod` from the
+  CLI. Deployments are not paused (the CLI deploy built fine). **The
+  "push = deploy" assumption is currently unreliable** — after any push,
+  confirm a new deployment exists (`npx vercel ls`) rather than assuming.
+  Worth checking the Vercel↔GitHub app connection in project settings.
+  Note this also means production now traces to a CLI deploy rather than a
+  git-linked one.
 
 ## Env checklist (Vercel dashboard)
 
@@ -98,10 +114,18 @@ repo (github.com/mjime019/orbit). Values live in Vercel and `.env.local`
 1. `ANTHROPIC_API_KEY` — **verified present** in Production (Jul 16, 110
    chars, added 112d ago). The camp pilot ran on real Anthropic, not
    Gemini-or-mock.
-2. `CAMP_ACCESS_KEY` — **verified present but EMPTY** in Production (Jul
-   16). An empty value makes `requireCampKey` fail closed, so every camp
-   request 401s, including ones sending the right code. Set a real value
-   in the Vercel dashboard, then redeploy for it to take effect.
+2. `CAMP_ACCESS_KEY` — set in Production + Preview, **verified working
+   against the live deploy** (Jul 16). Two traps cost an hour here, both
+   worth remembering:
+   - **`vercel env pull` reports this variable's value as empty even
+     though it is set.** Do NOT infer "the value didn't save" from a
+     blank pull — the CLI cannot read back every variable type, and it
+     is blank for this one while the runtime resolves it fine. The only
+     authoritative test is hitting the deployed endpoint. (`ls` shows
+     both this and `ANTHROPIC_API_KEY` as "Encrypted", so a working pull
+     for one variable does not prove pull works for another.)
+   - **Env var changes never reach an already-running deployment.** Set
+     the value, then redeploy — otherwise a correct value still 401s.
 3. `GEMINI_API_KEY` — **verified removed** from Vercel (Jul 16); already
    gone from `.env.local`.
 4. `NEXT_PUBLIC_SUPABASE_ANON_KEY` — verified Jul 8 (browser audit) and
