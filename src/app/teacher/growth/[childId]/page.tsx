@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { getChildWithProfile, getAllJourneyChapters } from "@/lib/queries";
-import { GrowthTimeline } from "./growth-timeline";
+import { GrowthTimeline } from "@/components/growth/growth-timeline";
 
 export default async function GrowthJourneyPage({
   params,

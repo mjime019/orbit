@@ -136,15 +136,19 @@ export function useSpeechCapture(): SpeechCapture {
       };
 
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error("Speech error:", event.error);
         if (
           event.error === "not-allowed" ||
           event.error === "service-not-available"
         ) {
+          // Handled path (falls back to typing) — warn, don't error, so a
+          // demo console stays clean.
+          console.warn("Speech unavailable:", event.error);
           activeRef.current = false;
           setRecording(false);
           setFallbackToText(true);
+          return;
         }
+        console.warn("Speech error (will auto-restart):", event.error);
         // Other errors ("no-speech", "aborted", "network") fall through to
         // onend, which restarts while the speaker still has the mic open.
       };

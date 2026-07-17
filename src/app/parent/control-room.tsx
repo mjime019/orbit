@@ -489,7 +489,7 @@ export function ControlRoom({
                 </div>
               )}
               <Link
-                href={`/teacher/growth/${child.id}`}
+                href="/parent/growth"
                 className="block text-center text-xs font-semibold text-rust mt-3 hover:underline"
               >
                 View full journey &rarr;
