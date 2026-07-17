@@ -6,10 +6,12 @@ import {
   getConversationMessages,
   DEMO_PARENT_ID,
 } from "@/lib/queries";
+import { getActiveChildId } from "@/lib/active-child";
 import { ConciergeChat } from "./concierge-chat";
 
 export default async function ChatPage() {
-  const { child, profile } = await getChildWithProfile();
+  const activeChildId = await getActiveChildId();
+  const { child, profile } = await getChildWithProfile(activeChildId);
 
   if (!child) {
     return (

@@ -5,25 +5,22 @@ import {
   getActivityRecommendations,
   getRecentObservations,
 } from "@/lib/queries";
+import { getActiveChildId } from "@/lib/active-child";
+import { SectionHead } from "@/components/ui/section-head";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ActivityList } from "./activity-list";
-import Link from "next/link";
 
 export default async function ActivitiesPage() {
-  const { child, profile, classroom } = await getChildWithProfile();
+  const childId = await getActiveChildId();
+  const { child, profile, classroom } = await getChildWithProfile(childId);
 
   if (!child) {
     return (
-      <div className="min-h-screen bg-cream flex items-center justify-center p-6">
-        <div className="bg-white rounded-2xl p-8 shadow-sm text-center max-w-md">
-          <p className="text-espresso text-lg font-semibold mb-2">
-            Supabase not configured
-          </p>
-          <p className="text-warm-gray text-sm">
-            Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in
-            your .env.local file.
-          </p>
-        </div>
-      </div>
+      <EmptyState
+        emoji="🏠"
+        title="We couldn't find this child"
+        action={{ href: "/parent", label: "Back home" }}
+      />
     );
   }
 
@@ -33,28 +30,13 @@ export default async function ActivitiesPage() {
   ]);
 
   return (
-    <div className="min-h-screen bg-cream">
-      <div className="mx-auto max-w-[640px] px-6 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <Link
-            href="/parent"
-            className="text-warm-gray hover:text-espresso transition-colors text-sm"
-          >
-            {"\u2190"} Back
-          </Link>
-        </div>
-
-        <div className="mb-8 fade-up">
-          <h1 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-espresso mb-1">
-            {"\u{1F3E0}"} Activities for {child.name}
-          </h1>
-          <p className="text-warm-gray text-sm">
-            Personalized to {child.name}&apos;s interests and recent classroom
-            observations.
-          </p>
-        </div>
-
+    <div className="fade-up">
+      <SectionHead
+        emoji="🏠"
+        title={`Activities for ${child.name}`}
+        subtitle="Personalized to their interests and recent observations"
+      />
+      <div className="mt-4">
         <ActivityList
           childId={child.id}
           childName={child.name}

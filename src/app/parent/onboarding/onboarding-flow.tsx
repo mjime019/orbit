@@ -261,6 +261,14 @@ export function OnboardingFlow({
           >
             Let&apos;s get started
           </button>
+          <div className="mt-4">
+            <Link
+              href="/parent"
+              className="text-sm text-warm-gray underline underline-offset-2"
+            >
+              Skip for now →
+            </Link>
+          </div>
         </div>
       </div>
     );

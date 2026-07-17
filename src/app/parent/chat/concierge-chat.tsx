@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
 import type { Message } from "@/lib/types";
 
 interface Props {
@@ -103,28 +102,22 @@ export function ConciergeChat({
   }
 
   return (
-    <div className="h-dvh flex flex-col bg-cream">
-      {/* Header */}
-      <div className="shrink-0 bg-white border-b border-sand-dark px-4 py-3">
-        <div className="mx-auto max-w-[640px] flex items-center gap-3">
-          <Link
-            href="/parent"
-            className="text-warm-gray hover:text-espresso transition-colors"
-          >
-            {"\u2190"}
-          </Link>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rust to-[#47B3FF] flex items-center justify-center text-white text-sm font-bold">
-              O
-            </div>
-            <div>
-              <p className="text-espresso font-semibold text-sm leading-tight">
-                Orbit
-              </p>
-              <p className="text-warm-gray text-xs">
-                {childName}&apos;s concierge
-              </p>
-            </div>
+    // Height leaves room for the app shell's sticky header and bottom tab
+    // bar; the composer must never hide behind the tabs.
+    <div className="h-[calc(100dvh-170px)] flex flex-col bg-cream -mx-6 -my-6 rounded-b-none">
+      {/* Chat identity strip */}
+      <div className="shrink-0 bg-white border-b border-sand-dark px-4 py-2.5">
+        <div className="mx-auto max-w-[640px] flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rust to-[#47B3FF] flex items-center justify-center text-white text-sm font-bold">
+            O
+          </div>
+          <div>
+            <p className="text-espresso font-semibold text-sm leading-tight">
+              Orbit
+            </p>
+            <p className="text-warm-gray text-xs">
+              {childName}&apos;s concierge
+            </p>
           </div>
         </div>
       </div>
