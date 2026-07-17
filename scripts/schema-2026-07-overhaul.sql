@@ -61,6 +61,15 @@ do $$ begin
     for all to anon using (true) with check (true);
 exception when duplicate_object then null; end $$;
 
+-- 3b. parent_children was never read by the app before the child switcher,
+-- so it has no anon SELECT policy (its original policies key on auth.uid()).
+-- Without this, getParentChildren() returns zero rows through the anon key
+-- and the header switcher stays hidden.
+do $$ begin
+  create policy "parent_children_anon_select" on parent_children
+    for select to anon using (true);
+exception when duplicate_object then null; end $$;
+
 -- 4. Seed: camp fold-in --------------------------------------------------------
 insert into profiles (id, email, name, role, school_id) values (
   '00000000-0000-0000-0000-000000000103',
