@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useSpeechCapture } from "@/lib/use-speech-capture";
 
 // ─── Types ──────────────────────────────────────────────────────────
 interface SocialMoment {
@@ -56,53 +57,22 @@ const THOUGHT_STARTERS = [
 ];
 
 // ─── Speech Recognition types ───────────────────────────────────────
-interface SpeechRecognitionEvent {
-  resultIndex: number;
-  results: SpeechRecognitionResultList;
-}
-
-interface SpeechRecognitionErrorEvent {
-  error: string;
-}
-
-interface SpeechRecognitionInstance extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start: () => void;
-  stop: () => void;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-  onend: (() => void) | null;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: new () => SpeechRecognitionInstance;
-    webkitSpeechRecognition: new () => SpeechRecognitionInstance;
-  }
-}
-
 // ─── Component ──────────────────────────────────────────────────────
 export default function CampPage() {
   const [step, setStep] = useState<Step>("ready");
   const [teacherName, setTeacherName] = useState("Carla");
   const [transcript, setTranscript] = useState("");
-  const [interimText, setInterimText] = useState("");
   const [observations, setObservations] = useState<Observations | null>(null);
   const [followups, setFollowups] = useState<FollowupQuestion[]>([]);
   const [currentFollowupIndex, setCurrentFollowupIndex] = useState(0);
   const [followupResponses, setFollowupResponses] = useState<string[]>([]);
   const [followupTranscript, setFollowupTranscript] = useState("");
-  const [followupInterim, setFollowupInterim] = useState("");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [useTextInput, setUseTextInput] = useState(false);
   const [textInput, setTextInput] = useState("");
   const [followupTextInput, setFollowupTextInput] = useState("");
   const [anythingElseTranscript, setAnythingElseTranscript] = useState("");
-  const [anythingElseInterim, setAnythingElseInterim] = useState("");
   const [anythingElseTextInput, setAnythingElseTextInput] = useState("");
   const [allFollowupText, setAllFollowupText] = useState("");
   const [campKey, setCampKey] = useState("");
@@ -110,17 +80,12 @@ export default function CampPage() {
   const [campKeyError, setCampKeyError] = useState("");
   const [checkingKey, setCheckingKey] = useState(false);
 
-  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const speech = useSpeechCapture();
+  const useTextInput = speech.fallbackToText;
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const transcriptRef = useRef("");
-  const recordingActiveRef = useRef(false);
   const savedIdRef = useRef<string | null>(null);
   const finalFollowupRef = useRef("");
-
-  // Keep ref in sync for use in callbacks
-  useEffect(() => {
-    transcriptRef.current = transcript;
-  }, [transcript]);
 
   // Access code persists per device so the teacher enters it once.
   useEffect(() => {
@@ -205,77 +170,6 @@ export default function CampPage() {
     </div>
   );
 
-  // ─── Speech recognition setup ──────────────────────────────────
-  const startRecognition = useCallback(
-    (onResult: (final: string, interim: string) => void) => {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-
-      if (!SpeechRecognition) {
-        setUseTextInput(true);
-        return null;
-      }
-
-      recordingActiveRef.current = true;
-      let rapidEnds = 0;
-      let lastStart = Date.now();
-
-      const spawn = (): SpeechRecognitionInstance => {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = "en-US";
-
-        recognition.onresult = (event: SpeechRecognitionEvent) => {
-          let final = "";
-          let interim = "";
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const t = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-              final += t + " ";
-            } else {
-              interim += t;
-            }
-          }
-          onResult(final, interim);
-        };
-
-        recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-          console.error("Speech error:", event.error);
-          if (event.error === "not-allowed" || event.error === "service-not-available") {
-            recordingActiveRef.current = false;
-            setUseTextInput(true);
-          }
-          // Other errors ("no-speech", "aborted", "network") fall through to
-          // onend, which restarts while the teacher still has the mic open.
-        };
-
-        recognition.onend = () => {
-          // Browsers stop recognition after a few seconds of silence; restart
-          // so the mic doesn't die mid-thought while the timer keeps running.
-          if (!recordingActiveRef.current) return;
-          rapidEnds = Date.now() - lastStart < 1000 ? rapidEnds + 1 : 0;
-          if (rapidEnds >= 3) {
-            // Ending immediately several times in a row means it's genuinely
-            // failing, not pausing on silence — switch to typing so nothing
-            // more is lost.
-            recordingActiveRef.current = false;
-            setUseTextInput(true);
-            return;
-          }
-          lastStart = Date.now();
-          recognitionRef.current = spawn();
-        };
-
-        recognition.start();
-        return recognition;
-      };
-
-      return spawn();
-    },
-    []
-  );
-
   // ─── Recording timer ───────────────────────────────────────────
   const startTimer = () => {
     setRecordingSeconds(0);
@@ -295,28 +189,23 @@ export default function CampPage() {
   const handleStartRecording = () => {
     setStep("recording");
     setTranscript("");
-    setInterimText("");
     setError("");
     startTimer();
-
-    const rec = startRecognition((final, interim) => {
-      if (final) setTranscript((prev) => prev + final);
-      setInterimText(interim);
-    });
-    recognitionRef.current = rec;
+    speech.start();
   };
 
   // ─── Step 2→review: Stop recording, show transcript for editing ──
+  // speech.stop() returns final + interim merged — the interim buffer is
+  // whatever was said last that the browser hadn't finalized yet.
   const handleStopRecording = () => {
     stopTimer();
-    recordingActiveRef.current = false;
-    if (recognitionRef.current) {
-      recognitionRef.current.onend = null;
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    }
+    const spoken = speech.stop();
 
-    const finalTranscript = useTextInput ? textInput : transcriptRef.current;
+    // `transcript` may hold earlier (possibly review-edited) text when the
+    // teacher chose "Record more".
+    const finalTranscript = useTextInput
+      ? textInput
+      : `${transcript} ${spoken}`.replace(/\s+/g, " ").trim();
     if (!finalTranscript.trim()) {
       setStep("ready");
       return;
@@ -416,29 +305,16 @@ export default function CampPage() {
   const handleStartFollowupRecording = () => {
     setStep("followup-recording");
     setFollowupTranscript("");
-    setFollowupInterim("");
     setFollowupTextInput("");
     startTimer();
-
-    const rec = startRecognition((final, interim) => {
-      if (final) setFollowupTranscript((prev) => prev + final);
-      setFollowupInterim(interim);
-    });
-    recognitionRef.current = rec;
+    speech.start();
   };
 
   // ─── Follow-up: Stop recording → go to review ──────────────
   const handleStopFollowupRecording = () => {
     stopTimer();
-    recordingActiveRef.current = false;
-    if (recognitionRef.current) {
-      recognitionRef.current.onend = null;
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    }
-
-    const finalText = useTextInput ? followupTextInput : followupTranscript;
-    setFollowupTranscript(finalText);
+    const spoken = speech.stop();
+    setFollowupTranscript(useTextInput ? followupTextInput : spoken);
     setStep("followup-review");
   };
 
@@ -493,27 +369,15 @@ export default function CampPage() {
   const handleStartAnythingElse = () => {
     setStep("anything-else-recording");
     setAnythingElseTranscript("");
-    setAnythingElseInterim("");
     setAnythingElseTextInput("");
     startTimer();
-
-    const rec = startRecognition((final, interim) => {
-      if (final) setAnythingElseTranscript((prev) => prev + final);
-      setAnythingElseInterim(interim);
-    });
-    recognitionRef.current = rec;
+    speech.start();
   };
 
   const handleStopAnythingElse = () => {
     stopTimer();
-    recordingActiveRef.current = false;
-    if (recognitionRef.current) {
-      recognitionRef.current.onend = null;
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    }
-    const finalText = useTextInput ? anythingElseTextInput : anythingElseTranscript;
-    setAnythingElseTranscript(finalText);
+    const spoken = speech.stop();
+    setAnythingElseTranscript(useTextInput ? anythingElseTextInput : spoken);
     setStep("anything-else-review");
   };
 
@@ -599,23 +463,20 @@ export default function CampPage() {
   const handleReset = () => {
     savedIdRef.current = null;
     finalFollowupRef.current = "";
-    recordingActiveRef.current = false;
+    speech.reset();
     setStep("ready");
     setTranscript("");
-    setInterimText("");
     setObservations(null);
     setFollowups([]);
     setCurrentFollowupIndex(0);
     setFollowupResponses([]);
     setFollowupTranscript("");
-    setFollowupInterim("");
     setError("");
     setSaved(false);
     setRecordingSeconds(0);
     setTextInput("");
     setFollowupTextInput("");
     setAnythingElseTranscript("");
-    setAnythingElseInterim("");
     setAnythingElseTextInput("");
     setAllFollowupText("");
   };
@@ -737,11 +598,12 @@ export default function CampPage() {
                 />
               ) : (
                 <p className="text-sm text-espresso leading-relaxed">
-                  {transcript}
-                  {interimText && (
-                    <span className="text-warm-gray">{interimText}</span>
+                  {transcript && `${transcript} `}
+                  {speech.finalText}
+                  {speech.interimText && (
+                    <span className="text-warm-gray">{speech.interimText}</span>
                   )}
-                  {!transcript && !interimText && (
+                  {!transcript && !speech.finalText && !speech.interimText && (
                     <span className="text-warm-gray/50">Listening...</span>
                   )}
                 </p>
@@ -837,13 +699,11 @@ export default function CampPage() {
               </button>
               <button
                 onClick={() => {
+                  // `transcript` (possibly just edited) is kept; the new
+                  // session's text appends to it at stop.
                   setStep("recording");
                   startTimer();
-                  const rec = startRecognition((final, interim) => {
-                    if (final) setTranscript((prev) => prev + final);
-                    setInterimText(interim);
-                  });
-                  recognitionRef.current = rec;
+                  speech.start();
                 }}
                 className="text-sm text-warm-gray underline underline-offset-2"
               >
@@ -961,11 +821,11 @@ export default function CampPage() {
                 />
               ) : (
                 <p className="text-sm text-espresso leading-relaxed">
-                  {followupTranscript}
-                  {followupInterim && (
-                    <span className="text-warm-gray">{followupInterim}</span>
+                  {speech.finalText}
+                  {speech.interimText && (
+                    <span className="text-warm-gray">{speech.interimText}</span>
                   )}
-                  {!followupTranscript && !followupInterim && (
+                  {!speech.finalText && !speech.interimText && (
                     <span className="text-warm-gray/50">Listening...</span>
                   )}
                 </p>
@@ -1022,13 +882,8 @@ export default function CampPage() {
                 onClick={() => {
                   setStep("followup-recording");
                   setFollowupTranscript("");
-                  setFollowupInterim("");
                   startTimer();
-                  const rec = startRecognition((final, interim) => {
-                    if (final) setFollowupTranscript((prev) => prev + final);
-                    setFollowupInterim(interim);
-                  });
-                  recognitionRef.current = rec;
+                  speech.start();
                 }}
                 className="text-sm text-warm-gray underline underline-offset-2"
               >
@@ -1094,11 +949,11 @@ export default function CampPage() {
                 />
               ) : (
                 <p className="text-sm text-espresso leading-relaxed">
-                  {anythingElseTranscript}
-                  {anythingElseInterim && (
-                    <span className="text-warm-gray">{anythingElseInterim}</span>
+                  {speech.finalText}
+                  {speech.interimText && (
+                    <span className="text-warm-gray">{speech.interimText}</span>
                   )}
-                  {!anythingElseTranscript && !anythingElseInterim && (
+                  {!speech.finalText && !speech.interimText && (
                     <span className="text-warm-gray/50">Listening...</span>
                   )}
                 </p>
@@ -1148,13 +1003,8 @@ export default function CampPage() {
                 onClick={() => {
                   setStep("anything-else-recording");
                   setAnythingElseTranscript("");
-                  setAnythingElseInterim("");
                   startTimer();
-                  const rec = startRecognition((final, interim) => {
-                    if (final) setAnythingElseTranscript((prev) => prev + final);
-                    setAnythingElseInterim(interim);
-                  });
-                  recognitionRef.current = rec;
+                  speech.start();
                 }}
                 className="text-sm text-warm-gray underline underline-offset-2"
               >

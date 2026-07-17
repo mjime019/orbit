@@ -1,11 +1,7 @@
 "use client";
 
-/* Web Speech API types (not in all TS libs) */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type SpeechRecognitionType = any;
-/* eslint-enable @typescript-eslint/no-explicit-any */
-
 import { useState, useRef, useEffect } from "react";
+import { useSpeechCapture } from "@/lib/use-speech-capture";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { DomainPill } from "@/components/ui/domain-pill";
@@ -50,17 +46,14 @@ export function ObservationFlow({
     null
   );
 
-  // Voice input
-  const [isListening, setIsListening] = useState(false);
-  const [hasVoiceSupport, setHasVoiceSupport] = useState(false);
-  const recognitionRef = useRef<SpeechRecognitionType>(null);
+  // Voice input — shared engine (interim capture, auto-restart on silence,
+  // interim merged on stop so the tail of dictation is never lost)
+  const speech = useSpeechCapture();
+  const isListening = speech.recording;
+  const hasVoiceSupport = speech.supported && !speech.fallbackToText;
+  // The note as it was when the mic opened; dictation appends to it on stop.
+  const noteBaseRef = useRef("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    setHasVoiceSupport(
-      "webkitSpeechRecognition" in window || "SpeechRecognition" in window
-    );
-  }, []);
 
   // Auto-focus textarea on capture screen
   useEffect(() => {
@@ -84,45 +77,38 @@ export function ObservationFlow({
   };
 
   const startListening = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = window as any;
-    const SR = w.webkitSpeechRecognition ?? w.SpeechRecognition;
-    if (!SR) return;
-
-    const recognition = new SR();
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.lang = "en-US";
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    recognition.onresult = (event: any) => {
-      let transcript = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript;
-      }
-      setNote((prev) => (prev ? prev + " " + transcript : transcript));
-    };
-
-    recognition.onerror = () => {
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognition.start();
-    setIsListening(true);
-    recognitionRef.current = recognition;
+    noteBaseRef.current = note;
+    speech.start();
   };
 
   const stopListening = () => {
-    recognitionRef.current?.stop();
-    setIsListening(false);
+    if (!speech.recording) return;
+    const spoken = speech.stop();
+    setNote(
+      `${noteBaseRef.current} ${spoken}`.replace(/\s+/g, " ").trim()
+    );
   };
 
+  // While dictating, the textarea mirrors base note + live speech (interim
+  // included) and is read-only; edits resume when the mic stops.
+  const liveNote = isListening
+    ? `${noteBaseRef.current} ${speech.finalText}${speech.interimText}`
+        .replace(/\s+/g, " ")
+        .trimStart()
+    : note;
+
   const handleCapture = async () => {
-    if (!selectedChild || !note.trim()) return;
+    // Tapping capture mid-dictation commits the live speech (incl. interim)
+    // instead of analyzing a stale note.
+    let currentNote = note;
+    if (speech.recording) {
+      const spoken = speech.stop();
+      currentNote = `${noteBaseRef.current} ${spoken}`
+        .replace(/\s+/g, " ")
+        .trim();
+      setNote(currentNote);
+    }
+    if (!selectedChild || !currentNote.trim()) return;
     setIsExtracting(true);
     setError(null);
 
@@ -130,7 +116,7 @@ export function ObservationFlow({
       const res = await fetch("/api/teacher/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ childId: selectedChild.id, note: note.trim() }),
+        body: JSON.stringify({ childId: selectedChild.id, note: currentNote.trim() }),
       });
       const data = await res.json();
 
@@ -334,8 +320,9 @@ export function ObservationFlow({
             <div className="relative">
               <textarea
                 ref={textareaRef}
-                value={note}
+                value={liveNote}
                 onChange={(e) => setNote(e.target.value)}
+                readOnly={isListening}
                 placeholder={`What did you notice about ${selectedChild?.name}?`}
                 disabled={isExtracting}
                 className="w-full min-h-[160px] p-4 rounded-xl border-2 border-sand-dark bg-cream text-[15px] leading-relaxed text-espresso placeholder:text-warm-gray/50 focus:outline-none focus:border-rust/40 transition-colors resize-none disabled:opacity-50"
@@ -359,7 +346,12 @@ export function ObservationFlow({
 
             {isListening && (
               <p className="text-xs text-red-500 font-semibold mt-2 animate-pulse">
-                Listening...
+                Listening — tap ⏹ when you&apos;re done
+              </p>
+            )}
+            {speech.fallbackToText && (
+              <p className="text-xs text-warm-gray mt-2">
+                Voice isn&apos;t available right now — typing works.
               </p>
             )}
           </Card>
@@ -381,7 +373,7 @@ export function ObservationFlow({
           {/* Capture button */}
           <button
             onClick={handleCapture}
-            disabled={!note.trim() || isExtracting}
+            disabled={!liveNote.trim() || isExtracting}
             className="fade-up delay-2 mt-4 w-full py-4 rounded-2xl font-semibold text-white transition-all disabled:opacity-40 bg-rust hover:bg-rust/90 active:scale-[0.98]"
           >
             {isExtracting ? (
