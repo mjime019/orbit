@@ -3,8 +3,8 @@
 ## ▶ STATUS: demo-hardening session CLOSED (Jul 16, 2026, evening)
 
 **Everything from this session is done and verified in production.**
-`orbit-seven-sandy.vercel.app` runs deployment `orbit-fcphw7w6f`
-(`dpl_6mx5dZ…`), a **git-linked** auto-deploy of commit `e050d56`.
+`orbit-seven-sandy.vercel.app` runs deployment `orbit-9ot1njmmd`
+(`dpl_HMPcNs…`), a **git-linked** auto-deploy of commit `3494d45`.
 Working tree clean, nothing unpushed. **Camp access code lives in Vercel +
 `.env.local` (`CAMP_ACCESS_KEY`) — never written here, see "Secret leak".**
 
@@ -18,19 +18,17 @@ Verified in production at close:
 | `camp_observations` anon UPDATE policy | **in place** (confirmed by no-op update returning the row) |
 | TEST rows | deleted — only Carla's 2 real observations remain |
 | GitHub auto-deploy | **recovered** — the earlier missed build was a GitHub outage, not a broken link |
+| `/api/camp/auth` (code validation) | live: wrong code 401, no code 401, real code 200 |
+| silent submit failure | **fixed** (`8d8ff26`) — errors visible, gate recoverable in place, code checked at entry |
+| mic auto-restart through a long silence | **PASSED on real hardware** |
 
-**Open items:**
-- **Unpushed:** `8d8ff26` fixes a silent submit failure on `/camp` found
-  by Miguel after close (see "Found during verification"). Needs a push to
-  reach production; until then the deployed `/camp` still bounces silently
-  to review if the access code is stale.
-- **Delete the "REPRO of the stale-code bug" row** in `camp_observations`
-  (dashboard only — no anon DELETE policy).
-- **The mic auto-restart gate remains unrun, and no tool can run it:**
-  open `/camp` on a phone, record with a deliberate 5-second silence
-  mid-sentence, confirm capture resumes and the transcript survives. The
-  code path is implemented and reviewed but has never met a real
-  microphone.
+**Mic auto-restart: PASSED on real hardware** (Miguel, Jul 16 evening) —
+talked, held a long silence, no interruption. That was the last gate no
+tool could run. Every gate in this session is now green.
+
+**Open item (1, cosmetic):** delete the "REPRO of the stale-code bug" row
+in `camp_observations` — dashboard only, since there is deliberately no
+anon DELETE policy.
 
 **Before any demo:** warm up Supabase — the free tier auto-pauses after ~7
 idle days. See "Demo runbook" in CLAUDE.md.
