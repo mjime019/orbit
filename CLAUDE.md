@@ -67,4 +67,23 @@ Key judgment call: ROADMAP.md's "Phase 1–3 COMPLETE ✅" was scored against ac
 
 ## Changelog
 
+- **Jul 17, 2026 — product overhaul (branch `overhaul`).** Speech: shared
+  `use-speech-capture` hook; stop() merges the interim buffer (fixes real
+  dictation tail loss); teacher observe gains interim + auto-restart. One
+  capture module for teachers AND parents at `/capture` (`?ctx=`): voice →
+  words-first save into new `captures` table → multi-child AI extraction
+  (dynamic roster) → sequential follow-ups → mandatory per-child review
+  cards → fan-out into `observations` (`source` column: teacher|parent).
+  `/camp` redirects there; camp process/followup routes deleted; Felipe &
+  Rafael are real `children` (camp history migrated via
+  `scripts/migrate-camp-observations.mjs`). Parent app rebuilt around a
+  child-centric home (AI "What this means" cached in `child_summaries`,
+  source-badged feed, module grid) inside an app shell (sticky header w/
+  child switcher via `orbit_child` cookie, bottom tab bar, EmptyState/
+  Skeleton/loading/error states); all module pages in-shell on the active
+  child; `/parent/understand` merges profile + growth (parents never enter
+  `/teacher` anymore); onboarding always escapable. Teacher dashboard adds
+  end-of-day capture + Summer Camp roster. **Requires
+  `scripts/schema-2026-07-overhaul.sql` run before this branch deploys.**
+
 - **Jul 8, 2026 — demo-hardening session.** AI is Anthropic-only: Gemini fallback deleted (`@google/genai` removed), silent mock fallback removed (`AI_MODE=mock` opt-in only), `callAI` returns `{ text, source }` and throws `AIUnavailableError`; all 8 calling routes surface failures. Camp flow persists the transcript BEFORE any AI call (verified: save → process → followup network order) and the done screen reports save failures honestly with retry. Camp routes gated by `x-camp-key` shared secret. Speech-recognition auto-restart implemented (mic no longer dies on a 3–5s pause; rapid-end guard falls back to typing). `queries.ts` throws on DB errors (paused Supabase now errors instead of rendering empty); fixed upcoming-events future filter, classroom-scoped observation count, chat history duplication. Discovered live: `camp_observations` lacks an anon UPDATE policy (save route falls back to insert; policy SQL in DEMO_FIXES_LOG.md).
