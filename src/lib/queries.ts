@@ -34,7 +34,7 @@ function mustList<T>(
 }
 
 export async function getChildWithProfile(childId = DEMO_CHILD_ID) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
 
   const [childRes, profileRes] = await Promise.all([
     sb.from("children").select("*").eq("id", childId).maybeSingle(),
@@ -59,7 +59,7 @@ export async function getChildWithProfile(childId = DEMO_CHILD_ID) {
 }
 
 export async function getRecentHighlights(childId = DEMO_CHILD_ID, limit = 5) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const data = mustList(
     await sb
       .from("highlights")
@@ -77,7 +77,7 @@ export async function getRecentObservations(
   childId = DEMO_CHILD_ID,
   limit = 10
 ) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const data = mustList(
     await sb
       .from("observations")
@@ -94,7 +94,7 @@ export async function getActivityRecommendations(
   childId = DEMO_CHILD_ID,
   limit = 3
 ) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const data = mustList(
     await sb
       .from("activity_recommendations")
@@ -113,7 +113,7 @@ export async function getWeekendRecommendations(
   childId = DEMO_CHILD_ID,
   limit = 4
 ) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const data = mustList(
     await sb
       .from("weekend_recommendations")
@@ -131,7 +131,7 @@ export async function getUpcomingCalendarEvents(
   schoolId = DEMO_SCHOOL_ID,
   limit = 6
 ) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const today = new Date().toISOString().split("T")[0];
   const data = mustList(
     await sb
@@ -147,7 +147,7 @@ export async function getUpcomingCalendarEvents(
 }
 
 export async function getLatestJourneyChapter(childId = DEMO_CHILD_ID) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const data = mustList(
     await sb
       .from("journey_chapters")
@@ -164,7 +164,7 @@ export async function getLatestJourneyChapter(childId = DEMO_CHILD_ID) {
 export const getJourneyChapters = getLatestJourneyChapter;
 
 export async function getAllJourneyChapters(childId = DEMO_CHILD_ID) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const data = mustList(
     await sb
       .from("journey_chapters")
@@ -177,7 +177,7 @@ export async function getAllJourneyChapters(childId = DEMO_CHILD_ID) {
 }
 
 export async function getAllSentHighlights(childId = DEMO_CHILD_ID) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const data = mustList(
     await sb
       .from("highlights")
@@ -191,7 +191,7 @@ export async function getAllSentHighlights(childId = DEMO_CHILD_ID) {
 }
 
 export async function getTodayObservationCount(classroomId = DEMO_CLASSROOM_ID) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const today = new Date().toISOString().split("T")[0];
   const { count, error } = await sb
     .from("observations")
@@ -206,7 +206,7 @@ export async function getTodayObservationCount(classroomId = DEMO_CLASSROOM_ID) 
 }
 
 export async function getChildContext(childId: string) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
 
   const child = must(
     await sb
@@ -252,7 +252,7 @@ export async function getChildContext(childId: string) {
 export async function getClassroomRoster(
   classroomId = DEMO_CLASSROOM_ID
 ) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const data = mustList(
     await sb
       .from("children")
@@ -267,7 +267,7 @@ export async function getClassroomRoster(
 export async function getClassroomInfo(
   classroomId = DEMO_CLASSROOM_ID
 ) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   return must(
     await sb
       .from("classrooms")
@@ -281,7 +281,7 @@ export async function getClassroomInfo(
 // ─── Phase 3 Query Helpers ────────────────────────────────────────
 
 export async function getAllWeekendPlaces() {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const data = mustList(
     await sb
       .from("weekend_places")
@@ -295,7 +295,7 @@ export async function getAllWeekendPlaces() {
 export async function getExtracurricularProviders(
   schoolId = DEMO_SCHOOL_ID
 ) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const data = mustList(
     await sb
       .from("extracurricular_providers")
@@ -308,7 +308,7 @@ export async function getExtracurricularProviders(
 }
 
 export async function getTransitionSchools(childId = DEMO_CHILD_ID) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const data = mustList(
     await sb
       .from("transition_schools")
@@ -326,7 +326,7 @@ export async function getOrCreateConversation(
   childId = DEMO_CHILD_ID,
   parentId = DEMO_PARENT_ID
 ) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
 
   const existing = must(
     await sb
@@ -360,7 +360,7 @@ export async function getConversationMessages(
   conversationId: string,
   limit = 20
 ) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const data = mustList(
     await sb
       .from("messages")
@@ -374,7 +374,7 @@ export async function getConversationMessages(
 }
 
 export async function getSchoolKnowledge(schoolId = DEMO_SCHOOL_ID) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
 
   const [schoolRes, knowledgeRes, calendarRes] = await Promise.all([
     sb.from("schools").select("name, address").eq("id", schoolId).maybeSingle(),
@@ -409,7 +409,7 @@ export async function getSchoolKnowledge(schoolId = DEMO_SCHOOL_ID) {
 // ─── Unified capture helpers ──────────────────────────────────────
 
 export async function getParentChildren(parentId = DEMO_PARENT_ID) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const data = mustList(
     await sb
       .from("parent_children")
@@ -423,7 +423,7 @@ export async function getParentChildren(parentId = DEMO_PARENT_ID) {
 }
 
 export async function getChildSummary(childId: string) {
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   // Deliberate exception to the throw-on-error rule: this is a pure cache
   // (regenerated on demand by /api/parent/summary). A missing or broken
   // cache table must never take down the home page.

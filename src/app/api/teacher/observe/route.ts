@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const { data, error } = await sb
     .from("observations")
     .insert({

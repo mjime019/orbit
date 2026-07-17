@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
 
   // ─── Merge all extracted fields into a unified profile ────
   const merged: Record<string, unknown> = {};

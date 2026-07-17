@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Fetch child info for prompt context
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const { data: child } = await sb
     .from("children")
     .select("name, date_of_birth")

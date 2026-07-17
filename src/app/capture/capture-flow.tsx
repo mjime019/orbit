@@ -143,93 +143,24 @@ export function CaptureFlow({
   const [textInput, setTextInput] = useState("");
   const [followupTextInput, setFollowupTextInput] = useState("");
   const [anythingElseTextInput, setAnythingElseTextInput] = useState("");
-  const [accessKey, setAccessKey] = useState("");
-  const [keyInput, setKeyInput] = useState("");
-  const [keyError, setKeyError] = useState("");
-  const [checkingKey, setCheckingKey] = useState(false);
-
   const speech = useSpeechCapture();
   const useTextInput = speech.fallbackToText;
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const captureIdRef = useRef<string | null>(null);
 
-  // Same storage key as the original camp tool so existing devices keep working.
-  useEffect(() => {
-    setAccessKey(localStorage.getItem("camp_key") ?? "");
-  }, []);
-
-  const gatedFetch = useCallback(
-    async (path: string, body: unknown) => {
-      const res = await fetch(path, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-camp-key": accessKey },
-        body: JSON.stringify(body),
-      });
-      if (res.status === 401) {
-        localStorage.removeItem("camp_key");
-        setAccessKey("");
-        throw new Error("Access code was rejected. Re-enter it below, then try again.");
-      }
-      return res;
-    },
-    [accessKey]
-  );
-
-  const handleUnlock = async () => {
-    const key = keyInput.trim();
-    if (!key || checkingKey) return;
-    setCheckingKey(true);
-    setKeyError("");
-    try {
-      const res = await fetch("/api/camp/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-camp-key": key },
-        body: "{}",
-      });
-      if (res.status === 401) {
-        setKeyError("That code didn't work. Check it and try again.");
-        return;
-      }
-      if (!res.ok) {
-        setKeyError("Couldn't check the code just now. Try again.");
-        return;
-      }
-      localStorage.setItem("camp_key", key);
-      setAccessKey(key);
-      setKeyInput("");
-    } catch {
-      setKeyError("Couldn't reach the server. Check your connection.");
-    } finally {
-      setCheckingKey(false);
+  // Auth is the family login (middleware session) — no per-page code needed.
+  const gatedFetch = useCallback(async (path: string, body: unknown) => {
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) {
+      throw new Error("Your session expired — reload the page to sign in again.");
     }
-  };
-
-  const accessCodeGate = (
-    <div className="bg-sand rounded-2xl p-5 mb-6">
-      <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">
-        Access code
-      </p>
-      <input
-        type="password"
-        value={keyInput}
-        onChange={(e) => setKeyInput(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") handleUnlock();
-        }}
-        placeholder="Enter the access code"
-        className="w-full bg-white rounded-xl p-3 text-sm text-espresso outline-none border border-sand-dark/50 focus:border-rust/50 transition-colors"
-      />
-      {keyError && <p className="text-xs text-red-600 mt-2">{keyError}</p>}
-      <button
-        onClick={handleUnlock}
-        disabled={checkingKey}
-        className="mt-3 w-full py-2.5 bg-rust text-white rounded-full text-sm font-medium hover:bg-rust/90 active:scale-95 transition-all disabled:opacity-50"
-      >
-        {checkingKey ? "Checking…" : "Unlock"}
-      </button>
-    </div>
-  );
+    return res;
+  }, []);
 
   // ─── Timer ──────────────────────────────────────────────────────
   const startTimer = () => {
@@ -593,7 +524,7 @@ export function CaptureFlow({
   const micButton = (onClick: () => void, size = "w-24 h-24") => (
     <button
       onClick={onClick}
-      disabled={!accessKey || roster.length === 0}
+      disabled={roster.length === 0}
       className={`${size} rounded-full bg-rust text-white flex items-center justify-center shadow-lg hover:bg-rust/90 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none`}
     >
       <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
@@ -652,8 +583,6 @@ export function CaptureFlow({
         {/* ─── READY ─────────────────────────────────────────── */}
         {step === "ready" && (
           <div className="fade-up">
-            {!accessKey && accessCodeGate}
-
             {roster.length === 0 && (
               <div className="bg-sand rounded-2xl p-5 mb-6 text-center">
                 <p className="text-sm text-espresso">
@@ -743,8 +672,6 @@ export function CaptureFlow({
                 {error}
               </div>
             )}
-            {!accessKey && accessCodeGate}
-
             <div className="bg-sand rounded-2xl p-5 mb-4">
               <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">
                 Review your recording
@@ -763,7 +690,6 @@ export function CaptureFlow({
             <div className="flex flex-col items-center gap-3">
               <button
                 onClick={handleSubmitTranscript}
-                disabled={!accessKey}
                 className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust/90 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
               >
                 Looks good — submit
@@ -1017,8 +943,6 @@ export function CaptureFlow({
                 {error}
               </div>
             )}
-            {!accessKey && accessCodeGate}
-
             <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">
               Review before saving
             </p>
@@ -1122,7 +1046,7 @@ export function CaptureFlow({
             <div className="flex flex-col items-center gap-3">
               <button
                 onClick={handleConfirm}
-                disabled={confirmableCards.length === 0 || !accessKey}
+                disabled={confirmableCards.length === 0}
                 className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust/90 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
               >
                 Save {confirmableCards.length || ""} observation

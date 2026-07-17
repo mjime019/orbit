@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
 
   // 1. Insert user message
   const { error: insertError } = await sb.from("messages").insert({

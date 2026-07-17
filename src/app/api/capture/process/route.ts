@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildMultiChildExtractionPrompt } from "@/lib/prompts";
-import { requireCampKey } from "@/lib/camp-auth";
 
 interface RosterEntry {
   id: string;
@@ -25,9 +24,6 @@ interface ExtractedChild {
 // roster ids. Unmatched names go to `unassigned` for manual assignment in the
 // review screen — nothing is attributed by guesswork.
 export async function POST(req: NextRequest) {
-  const unauthorized = requireCampKey(req);
-  if (unauthorized) return unauthorized;
-
   try {
     const { transcript, speakerName, speakerRole, setting, roster } =
       await req.json();

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
-import { requireCampKey } from "@/lib/camp-auth";
+import { createServerSupabase } from "@/lib/supabase-server";
 
 const VALID_DOMAINS = new Set([
   "language",
@@ -31,9 +30,7 @@ interface ConfirmObservation {
 // Nothing reaches this table un-reviewed — the client only calls confirm
 // after the speaker has seen and approved each card.
 export async function POST(req: NextRequest) {
-  const unauthorized = requireCampKey(req);
-  if (unauthorized) return unauthorized;
-
+  const supabase = await createServerSupabase();
   try {
     const {
       captureId,

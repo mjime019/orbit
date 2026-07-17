@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
-import { requireCampKey } from "@/lib/camp-auth";
+import { createServerSupabase } from "@/lib/supabase-server";
 
 // Words-first persistence for the unified capture flow. The client calls
 // this with the raw transcript BEFORE any AI processing, then again with the
 // same `id` to attach follow-ups / structured output / status changes.
+// Auth: middleware session (family login).
 export async function POST(req: NextRequest) {
-  const unauthorized = requireCampKey(req);
-  if (unauthorized) return unauthorized;
-
+  const supabase = await createServerSupabase();
   try {
     const body = await req.json();
     const {

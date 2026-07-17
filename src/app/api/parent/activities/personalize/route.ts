@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
 
   // Fetch context in parallel
   const [context, observations, { data: activity }] = await Promise.all([

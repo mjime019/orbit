@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 interface AppHeaderProps {
   childrenList: { id: string; name: string }[];
@@ -39,6 +40,7 @@ export function AppHeader({ childrenList, activeChildId }: AppHeaderProps) {
           </span>
         </Link>
 
+        <div className="flex items-center gap-2">
         {childrenList.length > 0 && (
           <div className="flex items-center gap-1.5">
             {childrenList.map((child, i) => {
@@ -72,6 +74,19 @@ export function AppHeader({ childrenList, activeChildId }: AppHeaderProps) {
             })}
           </div>
         )}
+        <button
+          onClick={async () => {
+            await supabase.auth.signOut();
+            router.push("/login");
+            router.refresh();
+          }}
+          title="Sign out"
+          aria-label="Sign out"
+          className="text-warm-gray hover:text-espresso transition-colors text-sm px-1"
+        >
+          ⎋
+        </button>
+        </div>
       </div>
     </header>
   );

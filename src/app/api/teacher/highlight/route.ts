@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
 
   // Fetch child context + observations in parallel
   const [context, { data: observations }] = await Promise.all([

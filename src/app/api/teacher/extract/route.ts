@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
 
   // Fetch child + profile + classroom in parallel
   const { data: child } = await sb

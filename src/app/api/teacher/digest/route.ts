@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
 
   // Fetch child context + observations + sent highlights in the date range
   const [context, { data: observations }, { data: highlights }] =

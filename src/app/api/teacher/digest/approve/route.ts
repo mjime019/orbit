@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
   const now = new Date().toISOString();
 
   const { data, error } = await sb

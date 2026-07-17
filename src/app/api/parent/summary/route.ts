@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing childId" }, { status: 400 });
   }
 
-  const sb = createServerSupabase();
+  const sb = await createServerSupabase();
 
   const [{ count }, { data: latest }] = await Promise.all([
     sb

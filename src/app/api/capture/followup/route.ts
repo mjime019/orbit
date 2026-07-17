@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI } from "@/lib/ai";
 import { buildCaptureFollowupPrompt } from "@/lib/prompts";
-import { requireCampKey } from "@/lib/camp-auth";
 
 interface RosterEntry {
   id: string;
@@ -32,9 +31,6 @@ function fallbackFollowups(roster: RosterEntry[]) {
 }
 
 export async function POST(req: NextRequest) {
-  const unauthorized = requireCampKey(req);
-  if (unauthorized) return unauthorized;
-
   try {
     const { transcript, observations, speakerName, roster } = await req.json();
 
