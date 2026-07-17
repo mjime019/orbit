@@ -255,3 +255,86 @@ RESPONSE FORMAT:
 - Conversational paragraphs, plain text only
 - End with a natural next step or offer, not a generic "let me know if you have questions"`;
 }
+
+export function buildMultiChildExtractionPrompt(context: {
+  speakerName: string;
+  speakerRole: "teacher" | "parent";
+  setting: "school" | "home";
+  roster: { name: string; age: number | null }[];
+}): string {
+  const childList = context.roster
+    .map((c) => `${c.name}${c.age != null ? ` (age ${c.age})` : ""}`)
+    .join(", ");
+  const settingLine =
+    context.setting === "school"
+      ? `A ${context.speakerRole} named ${context.speakerName} is describing the day with the kids at school or camp. They speak naturally about the whole day — multiple kids, multiple activities.`
+      : `A parent named ${context.speakerName} is describing time with their kid(s) — a weekend outing, an evening at home, a small moment they want to remember. They speak naturally and informally.`;
+
+  return `You are an early childhood observation assistant. ${settingLine} Your job is to extract structured developmental observations for THESE children only: ${childList}.
+
+Other children may be mentioned — include them in social context but do NOT create standalone observation records for them.
+
+FOR EACH CHILD LISTED ABOVE THAT WAS MENTIONED, EXTRACT:
+1. **name** — the child's name exactly as listed above.
+2. **observation_summary** — what happened, in ${context.speakerName}'s natural voice. Specific details, not generic. "Felipe spent 10 minutes painting with blue" is good. "Felipe engaged in creative play" is bad.
+3. **domains** — which developmental areas this touches. Choose from: language, motor_fine, motor_gross, social_emotional, cognitive, creative. Be conservative — only tag with clear evidence.
+4. **social_moments** — array of social interactions. Each has: type (helped, led, regulated, played_with, conflict, breakthrough), description (what happened), with_whom (other kids involved).
+5. **direct_quotes** — anything ${context.speakerName} quoted the child saying, verbatim.
+6. **other_kids_involved** — names of other children in the interaction.
+7. **notable** — boolean. True if something seems new, emerging, or especially worth tracking.
+8. **notable_reason** — if notable is true, why.
+
+RULES:
+- Preserve ${context.speakerName}'s voice and specifics. Never generalize.
+- Never use clinical language (no "demonstrates," "exhibits," "displays").
+- If a listed child wasn't mentioned at all, omit them from the children array.
+- If something is ambiguous, note it but don't guess.
+- Even if the description is short or informal, extract whatever you can. A short observation is better than none.
+
+Return ONLY valid JSON (no markdown, no backticks):
+{
+  "children": [
+    {
+      "name": string,
+      "observation_summary": string,
+      "domains": string[],
+      "social_moments": [{"type": string, "description": string, "with_whom": string[]}],
+      "direct_quotes": string[],
+      "other_kids_involved": string[],
+      "notable": boolean,
+      "notable_reason": string | null
+    }
+  ],
+  "day_summary": string,
+  "themes": string[]
+}`;
+}
+
+export function buildCaptureFollowupPrompt(context: {
+  speakerName: string;
+  roster: { name: string; age: number | null }[];
+}): string {
+  const childList = context.roster
+    .map((c) => `${c.name}${c.age != null ? ` (age ${c.age})` : ""}`)
+    .join(" and ");
+
+  return `You are a warm, curious observation assistant helping ${context.speakerName} capture richer details about ${childList}.
+
+You just received ${context.speakerName}'s description and the structured observations extracted from it. Your job is to ask 1-2 specific follow-up questions that would deepen the most interesting observations. Then add one open close.
+
+RULES FOR FOLLOW-UP QUESTIONS:
+- Be specific. Reference what they actually said. "You mentioned Felipe was focused on the painting — did he say anything about what he was making?" is good. "Can you tell me more?" is bad.
+- Focus on moments that suggest growth, new behavior, or social dynamics.
+- Keep it conversational and appreciative.
+- Maximum 2 targeted questions + 1 open close.
+
+The open close should always be a version of: "Anything else notable — new, exciting, or challenging — that we haven't covered?"
+
+Return ONLY valid JSON (no markdown, no backticks):
+{
+  "followups": [
+    {"question": string, "about_child": string, "reason": string}
+  ],
+  "open_close": string
+}`;
+}

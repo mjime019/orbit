@@ -405,3 +405,19 @@ export async function getSchoolKnowledge(schoolId = DEMO_SCHOOL_ID) {
 
   return `School: ${school?.name ?? "School"}\nAddress: ${school?.address ?? ""}\n\nKnowledge Base:\n${knowledgeText || "No knowledge base entries."}\n\nUpcoming Events:\n${calendarText || "No upcoming events."}`;
 }
+
+// ─── Unified capture helpers ──────────────────────────────────────
+
+export async function getParentChildren(parentId = DEMO_PARENT_ID) {
+  const sb = createServerSupabase();
+  const data = mustList(
+    await sb
+      .from("parent_children")
+      .select("child_id, children(id, name, date_of_birth)")
+      .eq("parent_id", parentId),
+    "load parent children"
+  );
+  return data
+    .map((row: { children: unknown }) => row.children)
+    .filter(Boolean) as { id: string; name: string; date_of_birth: string | null }[];
+}
