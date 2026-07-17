@@ -6,12 +6,14 @@ import {
   getRecentObservations,
 } from "@/lib/queries";
 import { getActiveChildId } from "@/lib/active-child";
+import { NoKidsState } from "@/components/ui/no-kids-state";
 import { SectionHead } from "@/components/ui/section-head";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TransitionNavigator } from "./transition-navigator";
 
 export default async function TransitionPage() {
   const childId = await getActiveChildId();
+  if (!childId) return <NoKidsState />;
   const { child, profile } = await getChildWithProfile(childId);
 
   if (!child) {

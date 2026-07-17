@@ -13,7 +13,7 @@ export default async function ParentLayout({
     <div className="min-h-screen bg-cream">
       <AppHeader
         childrenList={kids.map((k) => ({ id: k.id, name: k.name }))}
-        activeChildId={activeChildId}
+        activeChildId={activeChildId ?? ""}
       />
       {/* pb-24 keeps content clear of the fixed tab bar */}
       <div className="mx-auto max-w-[640px] px-6 py-6 pb-24">{children}</div>

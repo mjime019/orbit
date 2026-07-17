@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { getChildWithProfile, getAllJourneyChapters } from "@/lib/queries";
 import { getActiveChildId } from "@/lib/active-child";
+import { NoKidsState } from "@/components/ui/no-kids-state";
 import { GrowthTimeline } from "@/components/growth/growth-timeline";
 import { SectionHead } from "@/components/ui/section-head";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -67,6 +68,7 @@ function JsonDisplay({ data, fallback = "Not set yet" }: { data: Record<string, 
 // journey, in one parent-facing place.
 export default async function UnderstandPage() {
   const childId = await getActiveChildId();
+  if (!childId) return <NoKidsState />;
   const [{ child, profile, classroom }, chapters] = await Promise.all([
     getChildWithProfile(childId),
     getAllJourneyChapters(childId),

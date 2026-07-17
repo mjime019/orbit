@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { getChildWithProfile } from "@/lib/queries";
 import { getActiveChildId } from "@/lib/active-child";
+import { NoKidsState } from "@/components/ui/no-kids-state";
 import { SectionHead } from "@/components/ui/section-head";
 
 const PLANNERS = [
@@ -34,6 +35,7 @@ const PLANNERS = [
 
 export default async function PlannersPage() {
   const childId = await getActiveChildId();
+  if (!childId) return <NoKidsState />;
   const { child } = await getChildWithProfile(childId);
 
   return (

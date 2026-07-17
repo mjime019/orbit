@@ -2,12 +2,14 @@ export const dynamic = "force-dynamic";
 
 import { getChildWithProfile, getAllSentHighlights } from "@/lib/queries";
 import { getActiveChildId } from "@/lib/active-child";
+import { NoKidsState } from "@/components/ui/no-kids-state";
 import { SectionHead } from "@/components/ui/section-head";
 import { EmptyState } from "@/components/ui/empty-state";
 import { HighlightFeed } from "./highlight-feed";
 
 export default async function HighlightsPage() {
   const childId = await getActiveChildId();
+  if (!childId) return <NoKidsState />;
   const { child } = await getChildWithProfile(childId);
 
   if (!child) {

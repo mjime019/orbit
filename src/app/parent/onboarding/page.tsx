@@ -1,10 +1,16 @@
 export const dynamic = "force-dynamic";
 
 import { getChildWithProfile } from "@/lib/queries";
+import { getActiveChildId } from "@/lib/active-child";
+import { NoKidsState } from "@/components/ui/no-kids-state";
 import { OnboardingFlow } from "./onboarding-flow";
 
+// NOTE: interim wiring — the full per-child, age-aware rebuild is pivot
+// Phase 4. This at least onboards the ACTIVE child, not a hardcoded one.
 export default async function OnboardingPage() {
-  const { child, profile } = await getChildWithProfile();
+  const activeChildId = await getActiveChildId();
+  if (!activeChildId) return <NoKidsState />;
+  const { child, profile } = await getChildWithProfile(activeChildId);
 
   if (!child) {
     return (

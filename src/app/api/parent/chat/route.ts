@@ -7,8 +7,8 @@ import {
   getRecentObservations,
   getSchoolKnowledge,
   getConversationMessages,
-  DEMO_PARENT_ID,
 } from "@/lib/queries";
+import { getSessionProfile } from "@/lib/session";
 
 export async function POST(request: NextRequest) {
   const { conversationId, childId, message } = await request.json();
@@ -45,12 +45,8 @@ export async function POST(request: NextRequest) {
     getConversationMessages(conversationId, 20),
   ]);
 
-  // 3. Get parent name
-  const { data: parentProfile } = await sb
-    .from("profiles")
-    .select("name")
-    .eq("id", DEMO_PARENT_ID)
-    .single();
+  // 3. The logged-in parent
+  const sessionProfile = await getSessionProfile();
 
   // 4. Build child profile summary
   const profileSummary = [
@@ -93,7 +89,7 @@ export async function POST(request: NextRequest) {
 
   // 7. Build prompt and call AI
   const systemPrompt = buildConciergePrompt({
-    parentName: parentProfile?.name ?? "there",
+    parentName: sessionProfile.displayName,
     childName: context.childName,
     childAge: context.childAge,
     childProfile: profileSummary,

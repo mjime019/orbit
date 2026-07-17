@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { getChildWithProfile, getAllJourneyChapters } from "@/lib/queries";
 import { getActiveChildId } from "@/lib/active-child";
+import { NoKidsState } from "@/components/ui/no-kids-state";
 import { GrowthTimeline } from "@/components/growth/growth-timeline";
 import { SectionHead } from "@/components/ui/section-head";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -9,6 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 // Parent-facing growth journey — parents never enter /teacher for this.
 export default async function ParentGrowthPage() {
   const childId = await getActiveChildId();
+  if (!childId) return <NoKidsState />;
   const [{ child }, chapters] = await Promise.all([
     getChildWithProfile(childId),
     getAllJourneyChapters(childId),

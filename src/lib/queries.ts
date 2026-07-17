@@ -33,7 +33,7 @@ function mustList<T>(
   return result.data ?? [];
 }
 
-export async function getChildWithProfile(childId = DEMO_CHILD_ID) {
+export async function getChildWithProfile(childId: string) {
   const sb = await createServerSupabase();
 
   const [childRes, profileRes] = await Promise.all([
@@ -58,7 +58,7 @@ export async function getChildWithProfile(childId = DEMO_CHILD_ID) {
   return { child, profile, classroom };
 }
 
-export async function getRecentHighlights(childId = DEMO_CHILD_ID, limit = 5) {
+export async function getRecentHighlights(childId: string, limit = 5) {
   const sb = await createServerSupabase();
   const data = mustList(
     await sb
@@ -74,7 +74,7 @@ export async function getRecentHighlights(childId = DEMO_CHILD_ID, limit = 5) {
 }
 
 export async function getRecentObservations(
-  childId = DEMO_CHILD_ID,
+  childId: string,
   limit = 10
 ) {
   const sb = await createServerSupabase();
@@ -91,7 +91,7 @@ export async function getRecentObservations(
 }
 
 export async function getActivityRecommendations(
-  childId = DEMO_CHILD_ID,
+  childId: string,
   limit = 3
 ) {
   const sb = await createServerSupabase();
@@ -110,7 +110,7 @@ export async function getActivityRecommendations(
 }
 
 export async function getWeekendRecommendations(
-  childId = DEMO_CHILD_ID,
+  childId: string,
   limit = 4
 ) {
   const sb = await createServerSupabase();
@@ -146,7 +146,7 @@ export async function getUpcomingCalendarEvents(
   return data ?? [];
 }
 
-export async function getLatestJourneyChapter(childId = DEMO_CHILD_ID) {
+export async function getLatestJourneyChapter(childId: string) {
   const sb = await createServerSupabase();
   const data = mustList(
     await sb
@@ -163,7 +163,7 @@ export async function getLatestJourneyChapter(childId = DEMO_CHILD_ID) {
 // Keep old name as alias for backward compat
 export const getJourneyChapters = getLatestJourneyChapter;
 
-export async function getAllJourneyChapters(childId = DEMO_CHILD_ID) {
+export async function getAllJourneyChapters(childId: string) {
   const sb = await createServerSupabase();
   const data = mustList(
     await sb
@@ -176,7 +176,7 @@ export async function getAllJourneyChapters(childId = DEMO_CHILD_ID) {
   return data ?? [];
 }
 
-export async function getAllSentHighlights(childId = DEMO_CHILD_ID) {
+export async function getAllSentHighlights(childId: string) {
   const sb = await createServerSupabase();
   const data = mustList(
     await sb
@@ -307,7 +307,7 @@ export async function getExtracurricularProviders(
   return data ?? [];
 }
 
-export async function getTransitionSchools(childId = DEMO_CHILD_ID) {
+export async function getTransitionSchools(childId: string) {
   const sb = await createServerSupabase();
   const data = mustList(
     await sb
@@ -323,7 +323,7 @@ export async function getTransitionSchools(childId = DEMO_CHILD_ID) {
 // ─── Phase 2 Query Helpers ────────────────────────────────────────
 
 export async function getOrCreateConversation(
-  childId = DEMO_CHILD_ID,
+  childId: string,
   parentId = DEMO_PARENT_ID
 ) {
   const sb = await createServerSupabase();
@@ -408,7 +408,7 @@ export async function getSchoolKnowledge(schoolId = DEMO_SCHOOL_ID) {
 
 // ─── Unified capture helpers ──────────────────────────────────────
 
-export async function getParentChildren(parentId = DEMO_PARENT_ID) {
+export async function getParentChildren(parentId: string) {
   const sb = await createServerSupabase();
   const data = mustList(
     await sb
@@ -417,9 +417,13 @@ export async function getParentChildren(parentId = DEMO_PARENT_ID) {
       .eq("parent_id", parentId),
     "load parent children"
   );
-  return data
+  const kids = data
     .map((row: { children: unknown }) => row.children)
     .filter(Boolean) as { id: string; name: string; date_of_birth: string | null }[];
+  // Oldest first (Rafael, Felipe, Santiago)
+  return kids.sort((a, b) =>
+    (a.date_of_birth ?? "9999").localeCompare(b.date_of_birth ?? "9999")
+  );
 }
 
 export async function getChildSummary(childId: string) {

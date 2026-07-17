@@ -8,6 +8,7 @@ import {
   getChildSummary,
 } from "@/lib/queries";
 import { getActiveChild } from "@/lib/active-child";
+import { NoKidsState } from "@/components/ui/no-kids-state";
 import { DomainPill } from "@/components/ui/domain-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SummaryCard } from "./summary-card";
@@ -48,6 +49,7 @@ interface FeedItem {
 
 export default async function ParentHomePage() {
   const { activeChildId, activeChild } = await getActiveChild();
+  if (!activeChildId) return <NoKidsState />;
   const [{ child, profile }, highlights, observations, summaryRow] =
     await Promise.all([
       getChildWithProfile(activeChildId),

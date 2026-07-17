@@ -4,13 +4,15 @@ import {
   getChildWithProfile,
   getOrCreateConversation,
   getConversationMessages,
-  DEMO_PARENT_ID,
 } from "@/lib/queries";
 import { getActiveChildId } from "@/lib/active-child";
+import { getSessionProfile } from "@/lib/session";
+import { NoKidsState } from "@/components/ui/no-kids-state";
 import { ConciergeChat } from "./concierge-chat";
 
 export default async function ChatPage() {
   const activeChildId = await getActiveChildId();
+  if (!activeChildId) return <NoKidsState />;
   const { child, profile } = await getChildWithProfile(activeChildId);
 
   if (!child) {
@@ -29,10 +31,8 @@ export default async function ChatPage() {
     );
   }
 
-  const conversation = await getOrCreateConversation(
-    child.id,
-    DEMO_PARENT_ID
-  );
+  const { profileId } = await getSessionProfile();
+  const conversation = await getOrCreateConversation(child.id, profileId);
   const messages = conversation
     ? await getConversationMessages(conversation.id, 30)
     : [];

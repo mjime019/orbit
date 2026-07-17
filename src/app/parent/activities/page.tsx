@@ -6,12 +6,14 @@ import {
   getRecentObservations,
 } from "@/lib/queries";
 import { getActiveChildId } from "@/lib/active-child";
+import { NoKidsState } from "@/components/ui/no-kids-state";
 import { SectionHead } from "@/components/ui/section-head";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ActivityList } from "./activity-list";
 
 export default async function ActivitiesPage() {
   const childId = await getActiveChildId();
+  if (!childId) return <NoKidsState />;
   const { child, profile, classroom } = await getChildWithProfile(childId);
 
   if (!child) {

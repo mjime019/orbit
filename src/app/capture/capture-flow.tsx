@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useSpeechCapture } from "@/lib/use-speech-capture";
 import {

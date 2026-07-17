@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
-import { getClassroomRoster, getParentChildren, DEMO_PARENT_ID } from "@/lib/queries";
+import { getClassroomRoster, getParentChildren } from "@/lib/queries";
+import { getSessionProfile } from "@/lib/session";
 import { CaptureFlow } from "./capture-flow";
 
 // Fixed ids from scripts/schema-2026-07-overhaul.sql
@@ -21,10 +22,11 @@ export default async function CapturePage({
 }) {
   const { ctx } = await searchParams;
   const isTeacher = ctx === "teacher";
+  const { profileId } = await getSessionProfile();
 
   const kids = isTeacher
     ? await getClassroomRoster(SUMMER_CAMP_CLASSROOM_ID)
-    : await getParentChildren();
+    : await getParentChildren(profileId);
 
   const roster = kids.map((k) => ({
     id: k.id,
@@ -36,7 +38,7 @@ export default async function CapturePage({
     <CaptureFlow
       ctx={isTeacher ? "teacher" : "parent"}
       roster={roster}
-      authorProfileId={isTeacher ? CARLA_PROFILE_ID : DEMO_PARENT_ID}
+      authorProfileId={isTeacher ? CARLA_PROFILE_ID : profileId}
       classroomId={isTeacher ? SUMMER_CAMP_CLASSROOM_ID : null}
     />
   );
