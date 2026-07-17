@@ -5,6 +5,10 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { DomainPill } from "@/components/ui/domain-pill";
 import { SectionHead } from "@/components/ui/section-head";
+// DEBT: this client component reads Supabase directly from the browser
+// (per-child lazy loads on selection). Moving these reads behind server
+// routes is part of the auth round — the lazy per-child pattern doesn't
+// map cleanly onto initial server props, so it stays for now.
 import { supabase } from "@/lib/supabase";
 import {
   SOCIAL_TAG_CONFIG,

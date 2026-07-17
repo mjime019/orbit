@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
       domains: body.domains ?? [],
       social_tag: body.social_tag ?? null,
       other_children_ids: body.other_children_ids ?? [],
+      source: "teacher",
     })
     .select()
     .single();

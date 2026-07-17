@@ -24,12 +24,19 @@ function greeting(): string {
   return "Good evening";
 }
 
+// Summer Camp classroom (scripts/schema-2026-07-overhaul.sql); its roster
+// section renders only once the seed exists.
+const SUMMER_CAMP_CLASSROOM_ID = "00000000-0000-0000-0000-000000000011";
+
 export default async function TeacherDashboardPage() {
-  const [classroom, roster, todayCount] = await Promise.all([
-    getClassroomInfo(),
-    getClassroomRoster(),
-    getTodayObservationCount(),
-  ]);
+  const [classroom, roster, todayCount, campClassroom, campRoster] =
+    await Promise.all([
+      getClassroomInfo(),
+      getClassroomRoster(),
+      getTodayObservationCount(),
+      getClassroomInfo(SUMMER_CAMP_CLASSROOM_ID),
+      getClassroomRoster(SUMMER_CAMP_CLASSROOM_ID),
+    ]);
 
   if (!classroom) {
     return (
@@ -95,6 +102,22 @@ export default async function TeacherDashboardPage() {
         </div>
 
         {/* Quick Actions */}
+        <Link
+          href="/capture?ctx=teacher"
+          className="block bg-rust rounded-2xl shadow-sm p-5 mb-3 hover:bg-rust/90 transition-colors"
+        >
+          <div className="flex items-center gap-4">
+            <span className="text-2xl">🎤</span>
+            <div>
+              <h3 className="font-[family-name:var(--font-playfair)] text-base font-bold text-white">
+                End-of-day voice capture
+              </h3>
+              <p className="text-[11px] text-white/80 mt-0.5 leading-relaxed">
+                Talk through the whole day — Orbit splits it per child for your review
+              </p>
+            </div>
+          </div>
+        </Link>
         <div className="grid grid-cols-2 gap-3 mb-6">
           <Link
             href="/teacher/observe"
@@ -105,7 +128,7 @@ export default async function TeacherDashboardPage() {
               Observe
             </h3>
             <p className="text-[11px] text-warm-gray mt-1 leading-relaxed">
-              Capture a moment in 30 seconds
+              One child, 30 seconds
             </p>
           </Link>
           <Link
@@ -163,6 +186,45 @@ export default async function TeacherDashboardPage() {
             <p className="text-3xl mb-2">👧</p>
             <p className="text-warm-gray text-sm">No children in this classroom yet.</p>
           </div>
+        )}
+
+        {/* Summer Camp roster (present once the camp fold-in seed exists) */}
+        {campClassroom && campRoster.length > 0 && (
+          <>
+            <div className="mt-8 mb-2">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-base">☀️</span>
+                <h2 className="text-[11px] font-bold text-espresso uppercase tracking-wider">
+                  {campClassroom.name}
+                </h2>
+                <span className="text-[10px] text-warm-gray">
+                  · {campRoster.length} children
+                </span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {campRoster.map((child) => (
+                <Link
+                  key={child.id}
+                  href={`/teacher/growth/${child.id}`}
+                  className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-all"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-golden/25 to-sage/20 flex items-center justify-center text-sm font-bold text-espresso shrink-0">
+                    {child.name.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-espresso">{child.name}</p>
+                    {child.date_of_birth && (
+                      <p className="text-[11px] text-warm-gray">
+                        {age(child.date_of_birth)}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-warm-gray text-xs">📖</span>
+                </Link>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>
