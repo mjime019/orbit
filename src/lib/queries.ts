@@ -421,3 +421,20 @@ export async function getParentChildren(parentId = DEMO_PARENT_ID) {
     .map((row: { children: unknown }) => row.children)
     .filter(Boolean) as { id: string; name: string; date_of_birth: string | null }[];
 }
+
+export async function getChildSummary(childId: string) {
+  const sb = createServerSupabase();
+  // Deliberate exception to the throw-on-error rule: this is a pure cache
+  // (regenerated on demand by /api/parent/summary). A missing or broken
+  // cache table must never take down the home page.
+  const { data, error } = await sb
+    .from("child_summaries")
+    .select("*")
+    .eq("child_id", childId)
+    .maybeSingle();
+  if (error) {
+    console.warn("[db] child summary cache unavailable:", error.message);
+    return null;
+  }
+  return data;
+}

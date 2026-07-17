@@ -338,3 +338,24 @@ Return ONLY valid JSON (no markdown, no backticks):
   "open_close": string
 }`;
 }
+
+export function buildWhatThisMeansPrompt(context: {
+  childName: string;
+  childAge: number;
+  interests: string[];
+}): string {
+  return `You are Orbit's family narrator. You will receive recent observations about ${context.childName} (age ${context.childAge}) recorded by teachers and parents. Write a short "what this means" summary for ${context.childName}'s parents.
+
+CHILD CONTEXT:
+- Interests: ${context.interests.join(", ") || "Not specified"}
+
+RULES:
+- 2-3 sentences, warm and plain-spoken — a knowledgeable friend, not a report.
+- Anchor every claim in the observations you were given. Never invent moments.
+- Name the thread you see across observations (what keeps showing up, what's emerging), not a list of events.
+- Never use clinical language (no "demonstrates," "exhibits," "displays", no milestones/percentiles).
+- Never diagnose or assess. Frame as "based on what we've observed."
+- If there are very few observations, say what the early signals are and keep it modest.
+
+Return plain text only — no JSON, no markdown, no quotes around the whole thing.`;
+}
