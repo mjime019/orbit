@@ -107,6 +107,8 @@ export default function CampPage() {
   const [allFollowupText, setAllFollowupText] = useState("");
   const [campKey, setCampKey] = useState("");
   const [campKeyInput, setCampKeyInput] = useState("");
+  const [campKeyError, setCampKeyError] = useState("");
+  const [checkingKey, setCheckingKey] = useState(false);
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -133,13 +135,74 @@ export default function CampPage() {
         body: JSON.stringify(body),
       });
       if (res.status === 401) {
+        // Clear the bad code so the gate reappears — on whichever screen the
+        // teacher is on. Never navigate away: their words must stay put.
         localStorage.removeItem("camp_key");
         setCampKey("");
-        throw new Error("Access code rejected — re-enter it on the start screen.");
+        throw new Error("Access code was rejected. Re-enter it below, then submit again.");
       }
       return res;
     },
     [campKey]
+  );
+
+  // Validate the code before accepting it, so a wrong or stale one is caught
+  // now rather than after the teacher has already recorded their day.
+  const handleUnlock = async () => {
+    const key = campKeyInput.trim();
+    if (!key || checkingKey) return;
+    setCheckingKey(true);
+    setCampKeyError("");
+    try {
+      const res = await fetch("/api/camp/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-camp-key": key },
+        body: "{}",
+      });
+      if (res.status === 401) {
+        setCampKeyError("That code didn't work. Check it and try again.");
+        return;
+      }
+      if (!res.ok) {
+        setCampKeyError("Couldn't check the code just now. Try again.");
+        return;
+      }
+      localStorage.setItem("camp_key", key);
+      setCampKey(key);
+      setCampKeyInput("");
+    } catch {
+      setCampKeyError("Couldn't reach the server. Check your connection.");
+    } finally {
+      setCheckingKey(false);
+    }
+  };
+
+  const accessCodeGate = (
+    <div className="bg-sand rounded-2xl p-5 mb-6">
+      <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">
+        Access code
+      </p>
+      <input
+        type="password"
+        value={campKeyInput}
+        onChange={(e) => setCampKeyInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") handleUnlock();
+        }}
+        placeholder="Enter the camp access code"
+        className="w-full bg-white rounded-xl p-3 text-sm text-espresso outline-none border border-sand-dark/50 focus:border-rust/50 transition-colors"
+      />
+      {campKeyError && (
+        <p className="text-xs text-red-600 mt-2">{campKeyError}</p>
+      )}
+      <button
+        onClick={handleUnlock}
+        disabled={checkingKey}
+        className="mt-3 w-full py-2.5 bg-rust text-white rounded-full text-sm font-medium hover:bg-rust/90 active:scale-95 transition-all disabled:opacity-50"
+      >
+        {checkingKey ? "Checking…" : "Unlock"}
+      </button>
+    </div>
   );
 
   // ─── Speech recognition setup ──────────────────────────────────
@@ -598,32 +661,7 @@ export default function CampPage() {
         {step === "ready" && (
           <div className="fade-up">
             {/* Access code gate */}
-            {!campKey && (
-              <div className="bg-sand rounded-2xl p-5 mb-6">
-                <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">
-                  Access code
-                </p>
-                <input
-                  type="password"
-                  value={campKeyInput}
-                  onChange={(e) => setCampKeyInput(e.target.value)}
-                  placeholder="Enter the camp access code"
-                  className="w-full bg-white rounded-xl p-3 text-sm text-espresso outline-none border border-sand-dark/50 focus:border-rust/50 transition-colors"
-                />
-                <button
-                  onClick={() => {
-                    const key = campKeyInput.trim();
-                    if (!key) return;
-                    localStorage.setItem("camp_key", key);
-                    setCampKey(key);
-                    setCampKeyInput("");
-                  }}
-                  className="mt-3 w-full py-2.5 bg-rust text-white rounded-full text-sm font-medium hover:bg-rust/90 active:scale-95 transition-all"
-                >
-                  Unlock
-                </button>
-              </div>
-            )}
+            {!campKey && accessCodeGate}
 
             {/* Day flow memory triggers */}
             <div className="bg-sand rounded-2xl p-5 mb-6">
@@ -762,6 +800,18 @@ export default function CampPage() {
         {/* ─── STEP: Review transcript ──────────────────────── */}
         {step === "review" && (
           <div className="fade-up">
+            {/* Whatever went wrong must be visible here — this screen is
+                where every failed submit lands. */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 rounded-xl text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            {/* A rejected code clears the key; offer it here rather than
+                stranding the teacher with a transcript they can't submit. */}
+            {!campKey && accessCodeGate}
+
             <div className="bg-sand rounded-2xl p-5 mb-4">
               <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">
                 Review your recording
@@ -780,7 +830,8 @@ export default function CampPage() {
             <div className="flex flex-col items-center gap-3">
               <button
                 onClick={handleSubmitTranscript}
-                className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust/90 active:scale-95 transition-all"
+                disabled={!campKey}
+                className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust/90 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
               >
                 Looks good — submit
               </button>
@@ -1131,9 +1182,13 @@ export default function CampPage() {
               ) : (
                 <div className="mt-3">
                   {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
+                  {/* A rejected code clears the key here too — retrying
+                      without re-entering it would just fail again. */}
+                  {!campKey && <div className="text-left mt-3">{accessCodeGate}</div>}
                   <button
                     onClick={handleRetrySave}
-                    className="text-xs text-rust underline underline-offset-2"
+                    disabled={!campKey}
+                    className="text-xs text-rust underline underline-offset-2 disabled:opacity-40 disabled:pointer-events-none"
                   >
                     Retry save
                   </button>
