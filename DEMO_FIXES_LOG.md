@@ -1,43 +1,39 @@
 # DEMO_FIXES_LOG — July 8, 2026
 
-## ▶ RESUME HERE (paused evening of Jul 16, 2026, mid-GitHub-outage)
+## ▶ STATUS: demo-hardening session CLOSED (Jul 16, 2026, evening)
 
-**Production is live, verified, and demo-ready** at
-`orbit-seven-sandy.vercel.app` — deployment `orbit-l9py7agg0`, commit
-`4c0dd09`, shipped via `vercel --prod`. Nothing is broken; the work below
-is cleanup, not repair. **Camp access code: in Vercel + `.env.local`
-(`CAMP_ACCESS_KEY`) — never written here, see "Secret leak".**
+**Everything from this session is done and verified in production.**
+`orbit-seven-sandy.vercel.app` runs deployment `orbit-fcphw7w6f`
+(`dpl_6mx5dZ…`), a **git-linked** auto-deploy of commit `e050d56`.
+Working tree clean, nothing unpushed. **Camp access code lives in Vercel +
+`.env.local` (`CAMP_ACCESS_KEY`) — never written here, see "Secret leak".**
 
-The earlier "GitHub auto-deploy didn't fire" anomaly was **a GitHub
-outage**, not a broken Vercel↔GitHub link. Nothing to fix there; just
-re-confirm once GitHub is healthy.
+Verified in production at close:
 
-To resume, in order:
+| Check | Result |
+|---|---|
+| `/parent`, `/camp` | 200 |
+| camp API without key / with key | 401 / 200 |
+| live Anthropic extraction | real Claude output (quotes, per-child, `notable`) |
+| `camp_observations` anon UPDATE policy | **in place** (confirmed by no-op update returning the row) |
+| TEST rows | deleted — only Carla's 2 real observations remain |
+| GitHub auto-deploy | **recovered** — the earlier missed build was a GitHub outage, not a broken link |
 
-1. **Push the one unpushed commit** — `d802099` (log corrections; docs
-   only, no runtime effect). `git push origin main` from `~/Projects/orbit`.
-2. **Confirm auto-deploy recovered** — after that push, `npx vercel ls`
-   should show a NEW deployment within ~a minute. If it does, "push =
-   deploy" is healthy again and `4c0dd09`/`d802099` reconcile with the
-   git-linked flow. If it does not, the link needs a look (production is
-   fine either way — it already runs this code).
-3. **Supabase SQL editor** — add the missing policy so the camp save
-   updates its row instead of falling back to insert:
-   ```sql
-   create policy "anon_update_camp_observations" on camp_observations
-     for update to anon using (true) with check (true);
-   ```
-4. **Delete the 3 TEST rows** in `camp_observations` (transcripts begin
-   "TEST verification row, safe to delete").
-5. **Manual mic test** (the one gate no tool can run): open `/camp` on a
-   phone, record with a deliberate 5-second silence mid-sentence, confirm
-   speech capture resumes and the transcript survives.
-6. **Before any demo** — warm up Supabase (free tier auto-pauses after ~7
-   idle days); see "Demo runbook" in CLAUDE.md.
+**One gate still unrun, and no tool can run it:** the mic auto-restart.
+Open `/camp` on a phone, record with a deliberate 5-second silence
+mid-sentence, and confirm capture resumes and the transcript survives. The
+code path is implemented and reviewed but has never met a real microphone.
 
-Not blocking the demo, but next real work: the permissive anon RLS
-policies on core tables (fine for dummy data, must fix before real child
-data), then auth. See "Deferred / known-open".
+**Before any demo:** warm up Supabase — the free tier auto-pauses after ~7
+idle days. See "Demo runbook" in CLAUDE.md.
+
+**Next real work** (not blocking a dummy-data demo): the permissive anon
+RLS policies on core tables — `children`/`observations`/`highlights`
+readable and `conversations`/`messages` fully writable by anyone with the
+publishable key. Fine for seed data, **must be fixed before any real child
+data**. Sequence: service-role key server-side → tighten anon policies →
+move `content-engine.tsx`'s browser reads server-side → auth. See
+"Deferred / known-open".
 
 Demo-hardening session against the technical-DD P0 list. Mandate: make the
 deployed demo impossible to embarrass. All work committed locally on `main`
