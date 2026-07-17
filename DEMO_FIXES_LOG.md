@@ -19,10 +19,18 @@ Verified in production at close:
 | TEST rows | deleted — only Carla's 2 real observations remain |
 | GitHub auto-deploy | **recovered** — the earlier missed build was a GitHub outage, not a broken link |
 
-**One gate still unrun, and no tool can run it:** the mic auto-restart.
-Open `/camp` on a phone, record with a deliberate 5-second silence
-mid-sentence, and confirm capture resumes and the transcript survives. The
-code path is implemented and reviewed but has never met a real microphone.
+**Open items:**
+- **Unpushed:** `8d8ff26` fixes a silent submit failure on `/camp` found
+  by Miguel after close (see "Found during verification"). Needs a push to
+  reach production; until then the deployed `/camp` still bounces silently
+  to review if the access code is stale.
+- **Delete the "REPRO of the stale-code bug" row** in `camp_observations`
+  (dashboard only — no anon DELETE policy).
+- **The mic auto-restart gate remains unrun, and no tool can run it:**
+  open `/camp` on a phone, record with a deliberate 5-second silence
+  mid-sentence, confirm capture resumes and the transcript survives. The
+  code path is implemented and reviewed but has never met a real
+  microphone.
 
 **Before any demo:** warm up Supabase — the free tier auto-pauses after ~7
 idle days. See "Demo runbook" in CLAUDE.md.
@@ -128,6 +136,33 @@ quote, `notable` reasoning). The demo-facing loop is green in production.
   session alongside the full row.
 - **2 TEST rows** in `camp_observations` (transcripts start with
   "TEST verification row, safe to delete") — delete in the dashboard.
+  *(Done Jul 16.)* **One row remains from the Jul 16 evening bug repro —
+  transcript starts "REPRO of the stale-code bug"; delete it in the
+  dashboard.** There is no anon DELETE policy on `camp_observations`, so
+  rows cannot be removed from the app or API — dashboard only. (Worth
+  leaving that way: nothing in the product should delete observations.)
+
+- **Silent submit failure on `/camp` (found by Miguel, Jul 16 evening;
+  fixed in `8d8ff26`).** Clicking "Looks good — submit" bounced straight
+  back to the review screen with no message. Three compounding faults,
+  all introduced earlier that day when failures were rerouted from the
+  "ready" screen to "review":
+  1. The review screen never rendered `error` — so every failed submit
+     looked like a no-op. The precise sin this session existed to remove;
+     rerouting the failure path without moving the error display with it
+     recreated it one screen over.
+  2. A 401 clears the stored code, but the access-code input only existed
+     on "ready" — stranding the teacher on "review" with an empty key, so
+     every retry 401'd again. An infinite, silent loop.
+  3. The gate accepted any string unchecked, so a wrong or stale code only
+     surfaced *after* a full day had been recorded.
+  Fixes: error renders on review; the gate renders wherever the key is
+  missing (review + done) with submit/retry disabled until it is present;
+  new `/api/camp/auth` validates the code at entry. Transcript is never
+  disturbed by any of it.
+  **Lesson for future edits here: when you change where a failure lands,
+  check that the destination screen can actually show an error and offer
+  a way out.**
 - **GitHub auto-deploy did not fire** for the push of `4c0dd09` (Jul 16),
   though it fired normally for `6f92c89` an hour earlier from the same
   author. **Cause: a GitHub outage** — the webhook to Vercel never
