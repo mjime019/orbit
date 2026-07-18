@@ -490,3 +490,15 @@ export async function getHomeKidRows(parentId: string): Promise<HomeKidRow[]> {
     })
   );
 }
+
+export async function countObservationsSince(childId: string, sinceIso: string | null) {
+  const sb = await createServerSupabase();
+  let query = sb
+    .from("observations")
+    .select("id", { count: "exact", head: true })
+    .eq("child_id", childId);
+  if (sinceIso) query = query.gt("created_at", sinceIso);
+  const { count, error } = await query;
+  if (error) throw new Error(`[db] count observations since: ${error.message}`);
+  return count ?? 0;
+}

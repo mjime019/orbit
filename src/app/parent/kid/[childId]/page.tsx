@@ -9,6 +9,8 @@ import {
   getRecentObservations,
   getChildSummary,
   getAllJourneyChapters,
+  getLatestJourneyChapter,
+  countObservationsSince,
 } from "@/lib/queries";
 import { getSessionProfile } from "@/lib/session";
 import { formatAge } from "@/lib/age";
@@ -16,6 +18,9 @@ import { DomainPill } from "@/components/ui/domain-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { GrowthTimeline } from "@/components/growth/growth-timeline";
 import { ProfileSections } from "@/components/kid/profile-sections";
+import { ActivitiesTab } from "@/components/kid/activities-tab";
+import { ReportsTab } from "@/components/kid/reports-tab";
+import { GenerateChapterButton } from "@/components/kid/generate-chapter-button";
 import { SummaryCard } from "../../summary-card";
 
 type Tab = "story" | "journey" | "activities" | "reports" | "about";
@@ -114,18 +119,10 @@ export default async function KidPage({
       )}
       {tab === "journey" && <JourneyTab childId={childId} childName={child.name} />}
       {tab === "activities" && (
-        <EmptyState
-          emoji="⚽"
-          title="Activities are coming next"
-          body={`Sports, music, classes — ${child.name}'s pursuits will live here.`}
-        />
+        <ActivitiesTab childId={childId} childName={child.name} />
       )}
       {tab === "reports" && (
-        <EmptyState
-          emoji="📄"
-          title="Reports are coming next"
-          body={`Progress reports and assessments you upload for ${child.name} will live here.`}
-        />
+        <ReportsTab childId={childId} childName={child.name} />
       )}
       {tab === "about" && (
         <div>
@@ -258,15 +255,27 @@ async function JourneyTab({
   childId: string;
   childName: string;
 }) {
-  const chapters = await getAllJourneyChapters(childId);
+  const [chapters, latest] = await Promise.all([
+    getAllJourneyChapters(childId),
+    getLatestJourneyChapter(childId),
+  ]);
+  const newMomentCount = await countObservationsSince(
+    childId,
+    latest?.created_at ?? null
+  );
 
   return (
     <div>
+      <GenerateChapterButton
+        childId={childId}
+        childName={childName}
+        newMomentCount={newMomentCount}
+      />
       {chapters.length === 0 ? (
         <EmptyState
           emoji="📖"
           title="The first chapter is still being written"
-          body={`As observations build up, ${childName}'s story takes shape here. Chapter writing arrives with the next update.`}
+          body={`Capture a few moments, then tap the button above — Orbit writes ${childName}'s chapter from what you saw.`}
           action={{ href: "/capture", label: "Capture a moment" }}
         />
       ) : (

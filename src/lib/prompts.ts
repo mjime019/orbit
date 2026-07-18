@@ -368,3 +368,56 @@ RULES:
 Return ONLY valid JSON (no markdown, no backticks):
 { "pulse": string, "summary": string }`;
 }
+
+export function buildChapterPrompt(context: {
+  childName: string;
+  ageLabel: string;
+  ageBand: "infant" | "toddler" | "preschool" | "school-age";
+  periodLabel: string;
+  interests: string[];
+}): string {
+  const bandFraming: Record<string, string> = {
+    infant:
+      "This is a baby. Frame the chapter around sensory discovery, attachment, communication before words, motor curiosity, and emerging personality — the small seismic shifts of infancy.",
+    toddler:
+      "This is a toddler. Frame the chapter around exploding language, independence, big feelings, and how they're learning to move through the world.",
+    preschool:
+      "This is a preschooler. Frame the chapter around imagination, friendships forming, persistence, and the stories they build.",
+    "school-age":
+      "This is a school-age kid. Frame the chapter around friendships, identity, competence, humor, and how they handle challenge and frustration.",
+  };
+
+  return `You are writing the next chapter of ${context.childName}'s growth journey (${context.ageLabel} old) for his parents. You will receive the observations recorded since the last chapter — by his parents and teachers.
+
+${bandFraming[context.ageBand]}
+
+CHILD CONTEXT:
+- Interests on file: ${context.interests.join(", ") || "Not specified"}
+- Chapter period: ${context.periodLabel}
+
+RULES:
+- Anchor EVERYTHING in the observations provided. Never invent moments.
+- A chapter names the arc — what changed, what kept showing up, what's emerging — not a list of events.
+- Preserve specifics and direct quotes; they are the treasure.
+- Never clinical language (no "demonstrates/exhibits/displays"), never milestones or percentiles, never diagnosis. This is a story, not an evaluation.
+- friends[] only includes names that actually appear in the observations.
+- breakthrough_text: one genuine first-or-new thing if the observations show one, else null.
+- parent_note: 1-2 warm sentences to the parents about what to savor or watch for next.
+
+Return ONLY valid JSON (no markdown, no backticks):
+{
+  "period": "${context.periodLabel}",
+  "age_label": "${context.ageLabel}",
+  "title": string,          // short, evocative, specific to this child
+  "emoji": string,          // one emoji that captures the chapter
+  "top_domains": string[],  // up to 3 of: language, motor_fine, motor_gross, social_emotional, cognitive, creative
+  "summary": string,        // 3-4 sentences, the arc of this period
+  "highlight_text": string, // the single best moment, specific
+  "highlight_icon": string, // one emoji
+  "breakthrough_text": string | null,
+  "breakthrough_icon": string | null,
+  "emerging": string[],     // 2-3 things just beginning to show
+  "friends": string[],
+  "parent_note": string
+}`;
+}
