@@ -3,6 +3,7 @@ import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildWhatThisMeansPrompt } from "@/lib/prompts";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { getChildContext } from "@/lib/queries";
+import { formatAge } from "@/lib/age";
 
 // "What this means" summary for the child home page. Cached in
 // child_summaries and regenerated only when the observation set changes —
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
   const latestAt = latest?.[0]?.created_at ?? null;
 
   if (observationCount === 0) {
-    return NextResponse.json({ content: null, cached: true });
+    return NextResponse.json({ content: null, pulse: null, cached: true });
   }
 
   const { data: cachedRow } = await sb
@@ -44,9 +45,14 @@ export async function POST(request: NextRequest) {
   if (
     cachedRow &&
     cachedRow.observation_count === observationCount &&
-    cachedRow.latest_observation_at === latestAt
+    cachedRow.latest_observation_at === latestAt &&
+    cachedRow.pulse // pre-pulse cache rows regenerate once to gain one
   ) {
-    return NextResponse.json({ content: cachedRow.content, cached: true });
+    return NextResponse.json({
+      content: cachedRow.content,
+      pulse: cachedRow.pulse ?? null,
+      cached: true,
+    });
   }
 
   // select("*") stays resilient if optional columns (e.g. `source`) are
@@ -76,25 +82,48 @@ export async function POST(request: NextRequest) {
     .join("\n");
 
   if (!obsText.trim()) {
-    return NextResponse.json({ content: null, cached: true });
+    return NextResponse.json({ content: null, pulse: null, cached: true });
   }
 
+  // One AI call yields both the one-line pulse (home card) and the fuller
+  // summary (kid page), cached together under the same staleness key.
   let content: string;
+  let pulse: string | null = null;
   try {
+    const { data: childRow } = await sb
+      .from("children")
+      .select("date_of_birth")
+      .eq("id", childId)
+      .maybeSingle();
+
     const result = await callAI(
       buildWhatThisMeansPrompt({
         childName: context.childName,
-        childAge: context.childAge,
+        ageLabel: formatAge(childRow?.date_of_birth ?? null) || `${context.childAge} yr`,
         interests: context.interests,
       }),
       obsText,
-      { maxOutputTokens: 400 }
+      { maxOutputTokens: 500 }
     );
-    content = result.text.replace(/^["']|["']$/g, "").trim();
+    const cleaned = result.text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    try {
+      const parsed = JSON.parse(cleaned);
+      content = (parsed.summary ?? "").trim();
+      pulse = (parsed.pulse ?? "").trim() || null;
+    } catch {
+      // Model ignored the JSON shape — use the text as the summary, no pulse.
+      content = cleaned.replace(/^["']|["']$/g, "").trim();
+    }
+    if (!content) throw new AIUnavailableError("AI returned an empty summary.");
   } catch (err) {
     // A stale summary beats an error here; only fail when there is nothing.
     if (cachedRow?.content) {
-      return NextResponse.json({ content: cachedRow.content, cached: true, stale: true });
+      return NextResponse.json({
+        content: cachedRow.content,
+        pulse: cachedRow.pulse ?? null,
+        cached: true,
+        stale: true,
+      });
     }
     const message = err instanceof Error ? err.message : "AI service unavailable";
     const status = err instanceof AIUnavailableError ? err.status : 502;
@@ -104,10 +133,11 @@ export async function POST(request: NextRequest) {
   await sb.from("child_summaries").upsert({
     child_id: childId,
     content,
+    pulse,
     observation_count: observationCount,
     latest_observation_at: latestAt,
     generated_at: new Date().toISOString(),
   });
 
-  return NextResponse.json({ content, cached: false });
+  return NextResponse.json({ content, pulse, cached: false });
 }

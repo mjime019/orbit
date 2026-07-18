@@ -442,3 +442,51 @@ export async function getChildSummary(childId: string) {
   }
   return data;
 }
+
+// ─── Kid-first home ───────────────────────────────────────────────
+
+export interface HomeKidRow {
+  child: { id: string; name: string; date_of_birth: string | null };
+  pulse: string | null;
+  lastMoment: {
+    text: string;
+    source: "parent" | "school";
+    created_at: string;
+  } | null;
+}
+
+export async function getHomeKidRows(parentId: string): Promise<HomeKidRow[]> {
+  const kids = await getParentChildren(parentId);
+  const sb = await createServerSupabase();
+
+  return Promise.all(
+    kids.map(async (child) => {
+      const [summaryRes, obsRes] = await Promise.all([
+        sb
+          .from("child_summaries")
+          .select("pulse")
+          .eq("child_id", child.id)
+          .maybeSingle(),
+        sb
+          .from("observations")
+          .select("note, source, created_at")
+          .eq("child_id", child.id)
+          .order("created_at", { ascending: false })
+          .limit(1),
+      ]);
+
+      const obs = obsRes.data?.[0] ?? null;
+      return {
+        child,
+        pulse: summaryRes.data?.pulse ?? null,
+        lastMoment: obs
+          ? {
+              text: obs.note,
+              source: obs.source === "parent" ? ("parent" as const) : ("school" as const),
+              created_at: obs.created_at,
+            }
+          : null,
+      };
+    })
+  );
+}

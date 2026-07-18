@@ -6,18 +6,18 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/parent", label: "Home", emoji: "🏠", match: /^\/parent$/ },
   {
-    href: "/parent/planners",
-    label: "Planners",
-    emoji: "🗺️",
-    match: /^\/parent\/(planners|activities|weekends|extras|transition)/,
+    href: "/parent/growth",
+    label: "Journey",
+    emoji: "🌱",
+    match: /^\/parent\/(kid|growth|understand|onboarding|highlights)/,
   },
   { href: "/capture", label: "", emoji: "", match: /^\/capture/, center: true },
   { href: "/parent/chat", label: "Ask", emoji: "💬", match: /^\/parent\/chat/ },
   {
-    href: "/parent/understand",
-    label: "Journey",
-    emoji: "🌱",
-    match: /^\/parent\/(understand|growth|profile|onboarding)/,
+    href: "/parent/planners",
+    label: "More",
+    emoji: "🗺️",
+    match: /^\/parent\/(planners|activities|weekends|extras|transition)/,
   },
 ];
 

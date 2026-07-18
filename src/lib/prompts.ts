@@ -341,21 +341,24 @@ Return ONLY valid JSON (no markdown, no backticks):
 
 export function buildWhatThisMeansPrompt(context: {
   childName: string;
-  childAge: number;
+  ageLabel: string;
   interests: string[];
 }): string {
-  return `You are Orbit's family narrator. You will receive recent observations about ${context.childName} (age ${context.childAge}) recorded by teachers and parents. Write a short "what this means" summary for ${context.childName}'s parents.
+  return `You are Orbit's family narrator. You will receive recent observations about ${context.childName} (${context.ageLabel} old) recorded by parents and teachers. Produce TWO things for ${context.childName}'s parents:
+
+1. "pulse" — ONE sentence, at most 15 words, naming the single freshest thread. It sits on a small card; it must land at a glance. ("Rafael's been narrating elaborate rescue missions for his dinosaurs.")
+2. "summary" — 2-3 sentences expanding on the thread(s), warm and plain-spoken — a knowledgeable friend, not a report.
 
 CHILD CONTEXT:
 - Interests: ${context.interests.join(", ") || "Not specified"}
 
 RULES:
-- 2-3 sentences, warm and plain-spoken — a knowledgeable friend, not a report.
 - Anchor every claim in the observations you were given. Never invent moments.
-- Name the thread you see across observations (what keeps showing up, what's emerging), not a list of events.
-- Never use clinical language (no "demonstrates," "exhibits," "displays", no milestones/percentiles).
+- Name the thread across observations (what keeps showing up, what's emerging), not a list of events.
+- Age-appropriate framing (an ${context.ageLabel}-old's world), but never clinical language (no "demonstrates," "exhibits," "displays", no milestones/percentiles).
 - Never diagnose or assess. Frame as "based on what we've observed."
-- If there are very few observations, say what the early signals are and keep it modest.
+- If there are very few observations, keep both modest — early signals only.
 
-Return plain text only — no JSON, no markdown, no quotes around the whole thing.`;
+Return ONLY valid JSON (no markdown, no backticks):
+{ "pulse": string, "summary": string }`;
 }
