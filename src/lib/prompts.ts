@@ -135,7 +135,7 @@ export function buildOnboardingExtractionPrompt(context: {
   promptText: string;
   promptCategory: string;
   childName: string;
-  childAge: number;
+  ageLabel: string;
 }): string {
   const extractionRules: Record<string, string> = {
     interests:
@@ -149,16 +149,22 @@ export function buildOnboardingExtractionPrompt(context: {
     social:
       "Extract: play_style (e.g. 'parallel', 'collaborative', 'leader', 'observer'), social_notes (free text about friendships), comfort_helps[] (what calms them), comfort_escalates[] (what makes it worse).",
     routines:
-      "Extract: nap (time + notes), meals (preferences + notes), drop_off (time + notes), pickup (time + notes). Structure as an object with these keys.",
+      "Extract: an object describing the day's rhythm using whatever keys fit what the parent said (e.g. sleep, naps, meals, mornings, evenings, golden_hours). Values are short notes in the parent's words.",
     family:
       "Extract: siblings[] (name + age if given), languages[] (spoken at home), pets[] (type + name if given), living_situation (brief description).",
     values:
       "Extract: parent_values[] (what matters most), philosophy (brief description of parenting approach).",
+    temperament:
+      "Extract: temperament_notes (the parent's description in their words), comfort_helps[] (what soothes), comfort_escalates[] (what makes it worse) if mentioned.",
+    language:
+      "Extract: language_notes (how the child communicates right now — words, phrases, favorite sayings), direct_quotes[] if the parent quoted the child.",
+    school:
+      "Extract: school_notes (how the child feels about and does at school, in the parent's words), school_likes[] and school_struggles[] if mentioned.",
   };
 
   return `You are processing a parent's response during the Orbit onboarding intake for their child. The parent is answering a conversational question about their child, family, and goals. Your job is to extract structured data from their natural-language response.
 
-CHILD: ${context.childName}, Age: ${context.childAge}
+CHILD: ${context.childName}, ${context.ageLabel} old
 CURRENT PROMPT: "${context.promptText}"
 CATEGORY: ${context.promptCategory}
 

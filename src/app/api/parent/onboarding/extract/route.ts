@@ -3,6 +3,7 @@ import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildOnboardingExtractionPrompt } from "@/lib/prompts";
 import { createServerSupabase } from "@/lib/supabase-server";
 import type { OnboardingExtraction } from "@/lib/types";
+import { formatAge } from "@/lib/age";
 
 export async function POST(request: NextRequest) {
   const { childId, promptKey, promptText, promptCategory, response } =
@@ -23,18 +24,11 @@ export async function POST(request: NextRequest) {
     .eq("id", childId)
     .single();
 
-  const age = child?.date_of_birth
-    ? Math.floor(
-        (Date.now() - new Date(child.date_of_birth).getTime()) /
-          (365.25 * 24 * 60 * 60 * 1000)
-      )
-    : 4;
-
   const systemPrompt = buildOnboardingExtractionPrompt({
     promptText: promptText ?? promptKey,
     promptCategory: promptCategory ?? "interests",
     childName: child?.name ?? "Child",
-    childAge: age,
+    ageLabel: formatAge(child?.date_of_birth ?? null) || "preschool age",
   });
 
   let rawResponse: string;
@@ -47,17 +41,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status });
   }
 
-  // Parse JSON response
+  // Parse JSON response — tolerate fences and prose preambles by taking the
+  // outermost {...} block.
   let extraction: OnboardingExtraction;
   try {
     const cleaned = rawResponse
       .replace(/```json?\n?/g, "")
       .replace(/```/g, "")
       .trim();
-    extraction = JSON.parse(cleaned);
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    const jsonBlock =
+      start !== -1 && end > start ? cleaned.slice(start, end + 1) : cleaned;
+    extraction = JSON.parse(jsonBlock);
   } catch {
     return NextResponse.json(
-      { error: "Failed to parse AI response", raw: rawResponse },
+      { error: "Couldn't structure that answer — try once more.", raw: rawResponse },
       { status: 502 }
     );
   }

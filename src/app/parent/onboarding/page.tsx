@@ -1,39 +1,33 @@
 export const dynamic = "force-dynamic";
 
-import { getChildWithProfile } from "@/lib/queries";
-import { getActiveChildId } from "@/lib/active-child";
-import { NoKidsState } from "@/components/ui/no-kids-state";
+import { redirect } from "next/navigation";
+import { getChildWithProfile, getParentChildren } from "@/lib/queries";
+import { getSessionProfile } from "@/lib/session";
 import { OnboardingFlow } from "./onboarding-flow";
 
-// NOTE: interim wiring — the full per-child, age-aware rebuild is pivot
-// Phase 4. This at least onboards the ACTIVE child, not a hardcoded one.
-export default async function OnboardingPage() {
-  const activeChildId = await getActiveChildId();
-  if (!activeChildId) return <NoKidsState />;
-  const { child, profile } = await getChildWithProfile(activeChildId);
+// "Seed the file" — always for an explicit child (?child=<id>), validated
+// against the session parent's own kids.
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ child?: string }>;
+}) {
+  const { child: childParam } = await searchParams;
+  const { profileId } = await getSessionProfile();
+  const kids = await getParentChildren(profileId);
 
-  if (!child) {
-    return (
-      <div className="min-h-screen bg-cream flex items-center justify-center p-6">
-        <div className="bg-white rounded-2xl p-8 shadow-sm text-center max-w-md">
-          <p className="text-espresso text-lg font-semibold mb-2">
-            Supabase not configured
-          </p>
-          <p className="text-warm-gray text-sm">
-            Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in
-            your .env.local file.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const target = kids.find((k) => k.id === childParam);
+  if (!target) redirect("/parent");
+
+  const { child, profile } = await getChildWithProfile(target.id);
+  if (!child) redirect("/parent");
 
   return (
     <OnboardingFlow
       childId={child.id}
       childName={child.name}
+      dateOfBirth={child.date_of_birth}
       alreadyComplete={profile?.onboarding_complete ?? false}
-      existingProfile={profile}
     />
   );
 }

@@ -98,7 +98,20 @@ export default async function KidPage({
         ))}
       </div>
 
-      {tab === "story" && <StoryTab childId={childId} childName={child.name} />}
+      {tab === "story" && (
+        <>
+          {!profile?.onboarding_complete && (
+            <Link
+              href={`/parent/onboarding?child=${childId}`}
+              className="block mb-4 bg-lavender/25 border border-lavender/50 rounded-2xl px-4 py-3 text-[13px] text-espresso hover:bg-lavender/35 transition-colors"
+            >
+              🌱 <span className="font-semibold">Seed {child.name}&apos;s file</span> — a few
+              questions tuned to his age make everything smarter.
+            </Link>
+          )}
+          <StoryTab childId={childId} childName={child.name} />
+        </>
+      )}
       {tab === "journey" && <JourneyTab childId={childId} childName={child.name} />}
       {tab === "activities" && (
         <EmptyState
@@ -118,7 +131,7 @@ export default async function KidPage({
         <div>
           <div className="flex justify-end mb-3">
             <Link
-              href="/parent/onboarding"
+              href={`/parent/onboarding?child=${childId}`}
               className="text-[11px] font-medium text-rust underline underline-offset-2"
             >
               Seed {child.name}&apos;s file →
