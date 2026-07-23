@@ -234,3 +234,49 @@ export function questionsForBand(band: AgeBand): OnboardingQuestion[] {
 }
 
 export const MIN_ANSWERS = 3;
+
+// The ~6-month "what's changed" refresh: 4 delta questions instead of the
+// full seed. Interests union into the file; text answers replace stale
+// notes (latest truth wins — history survives in onboarding_responses).
+export function refreshQuestionsForBand(band: AgeBand): OnboardingQuestion[] {
+  const changedQuestion: OnboardingQuestion =
+    band === "school-age"
+      ? {
+          key: "school",
+          category: "school",
+          question: (n) => `How's school going for ${n} these days — what's changed?`,
+          placeholder: "Lately he...",
+        }
+      : {
+          key: "temperament",
+          category: "temperament",
+          question: (n) => `How would you describe ${n} these days — what's changed lately?`,
+          subtext: "New phase, new quirks, new things he says.",
+          placeholder: "Lately he's...",
+        };
+  return [
+    {
+      key: "interests",
+      category: "interests",
+      question: (n) => `What is ${n} into NOW?`,
+      subtext: "The current obsessions — even if they've completely changed.",
+      placeholder: "Right now he loves...",
+    },
+    changedQuestion,
+    {
+      key: "challenges",
+      category: "challenges",
+      question: (n) => `What's hard for ${n} right now?`,
+      placeholder: "He struggles when...",
+    },
+    {
+      key: "anything_new",
+      category: "update",
+      question: (n) => `Anything new in ${n}'s world we should know?`,
+      subtext: "New sibling dynamics, school changes, big moments, worries.",
+      placeholder: "One thing that's new...",
+    },
+  ];
+}
+
+export const MIN_ANSWERS_REFRESH = 2;

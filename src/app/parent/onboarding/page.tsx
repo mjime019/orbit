@@ -6,13 +6,14 @@ import { getSessionProfile } from "@/lib/session";
 import { OnboardingFlow } from "./onboarding-flow";
 
 // "Seed the file" — always for an explicit child (?child=<id>), validated
-// against the session parent's own kids.
+// against the session parent's own kids. ?mode=refresh runs the short
+// "what's changed" pass instead of the full seed.
 export default async function OnboardingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ child?: string }>;
+  searchParams: Promise<{ child?: string; mode?: string }>;
 }) {
-  const { child: childParam } = await searchParams;
+  const { child: childParam, mode } = await searchParams;
   const { profileId } = await getSessionProfile();
   const kids = await getParentChildren(profileId);
 
@@ -28,6 +29,7 @@ export default async function OnboardingPage({
       childName={child.name}
       dateOfBirth={child.date_of_birth}
       alreadyComplete={profile?.onboarding_complete ?? false}
+      mode={mode === "refresh" ? "refresh" : "seed"}
     />
   );
 }

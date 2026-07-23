@@ -6,7 +6,9 @@ import { useSpeechCapture } from "@/lib/use-speech-capture";
 import { ageBand, formatAge } from "@/lib/age";
 import {
   questionsForBand,
+  refreshQuestionsForBand,
   MIN_ANSWERS,
+  MIN_ANSWERS_REFRESH,
   type OnboardingQuestion,
 } from "@/lib/onboarding-questions";
 
@@ -23,6 +25,7 @@ interface OnboardingFlowProps {
   childName: string;
   dateOfBirth: string | null;
   alreadyComplete: boolean;
+  mode: "seed" | "refresh";
 }
 
 // Fetch with a real timeout — an unanswered request must never leave the
@@ -48,9 +51,15 @@ export function OnboardingFlow({
   childName,
   dateOfBirth,
   alreadyComplete,
+  mode,
 }: OnboardingFlowProps) {
   const band = ageBand(dateOfBirth);
-  const prompts = useMemo(() => questionsForBand(band), [band]);
+  const isRefresh = mode === "refresh";
+  const prompts = useMemo(
+    () => (isRefresh ? refreshQuestionsForBand(band) : questionsForBand(band)),
+    [band, isRefresh]
+  );
+  const minAnswers = isRefresh ? MIN_ANSWERS_REFRESH : MIN_ANSWERS;
 
   const [screen, setScreen] = useState<Screen>("welcome");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -164,8 +173,8 @@ export function OnboardingFlow({
 
   // ─── Completion (real state, no timers; retry keeps everything) ───
   const finish = async () => {
-    if (answeredCount < MIN_ANSWERS) {
-      setError(`Answer at least ${MIN_ANSWERS} questions so the file has something to grow from.`);
+    if (answeredCount < minAnswers) {
+      setError(`Answer at least ${minAnswers} questions so the file has something to grow from.`);
       return;
     }
     setScreen("saving");
@@ -174,7 +183,7 @@ export function OnboardingFlow({
     try {
       const res = await postJson(
         "/api/parent/onboarding/complete",
-        { childId, responses: [...responses.values()] },
+        { childId, responses: [...responses.values()], mode },
         45000
       );
       const data = await res.json().catch(() => ({}));
@@ -198,16 +207,19 @@ export function OnboardingFlow({
       <div className="fade-up text-center pt-6">
         <div className="text-5xl mb-4">🌱</div>
         <h1 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-espresso mb-2">
-          Seed {childName}&apos;s file
+          {isRefresh
+            ? `What's changed with ${childName}?`
+            : `Seed ${childName}'s file`}
         </h1>
         <p className="text-sm text-warm-gray mb-1">
           {formatAge(dateOfBirth)} old — the questions fit where he is right now.
         </p>
         <p className="text-sm text-warm-gray leading-relaxed max-w-[340px] mx-auto mb-6">
-          Talk or type — what you see in {childName} becomes the base layer
-          everything else builds on.
+          {isRefresh
+            ? `It's been a while. Four quick questions bring ${childName}'s file up to date — new interests add on, stale notes get replaced.`
+            : `Talk or type — what you see in ${childName} becomes the base layer everything else builds on.`}
         </p>
-        {alreadyComplete && (
+        {alreadyComplete && !isRefresh && (
           <p className="text-xs text-sage mb-4">
             ✓ Seeded before — answering again refines the file.
           </p>
@@ -258,7 +270,7 @@ export function OnboardingFlow({
             ← Back
           </button>
           <span className="text-[11px] text-warm-gray">
-            {answeredCount} answered · {MIN_ANSWERS}+ needed
+            {answeredCount} answered · {minAnswers}+ needed
           </span>
           <button onClick={skip} className="text-warm-gray text-sm hover:text-espresso transition-colors">
             Skip →
@@ -324,7 +336,7 @@ export function OnboardingFlow({
           )}
         </button>
 
-        {answeredCount >= MIN_ANSWERS && currentIndex + 1 < prompts.length && (
+        {answeredCount >= minAnswers && currentIndex + 1 < prompts.length && (
           <button
             onClick={() => {
               stopListening();
@@ -414,7 +426,9 @@ export function OnboardingFlow({
     return (
       <div className="fade-up">
         <h2 className="font-[family-name:var(--font-playfair)] text-xl font-semibold text-espresso mb-1">
-          {childName}&apos;s file, seeded
+          {isRefresh
+            ? `${childName}'s file, refreshed`
+            : `${childName}'s file, seeded`}
         </h2>
         <p className="text-xs text-warm-gray mb-4">
           All of it is saved — here&apos;s what Orbit heard.

@@ -9,6 +9,10 @@
 
 -- Re-seed tracking: when the file was last seeded/refreshed.
 alter table child_profiles add column if not exists last_seeded_at timestamptz;
+-- Backfill: files seeded before the stamp existed start their 6-month
+-- clock now instead of immediately showing the refresh nudge.
+update child_profiles set last_seeded_at = now()
+  where onboarding_complete = true and last_seeded_at is null;
 
 -- Reports: structured dates + AI ingestion results.
 alter table reports add column if not exists report_date    date;

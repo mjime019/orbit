@@ -53,6 +53,16 @@ function shortDate(iso: string): string {
   });
 }
 
+const SIX_MONTHS_MS = 183 * 24 * 60 * 60 * 1000;
+
+// Kids change fast — after ~6 months the seeded file goes stale.
+function fileNeedsRefresh(profile: { onboarding_complete?: boolean; last_seeded_at?: string | null } | null): boolean {
+  if (!profile?.onboarding_complete) return false;
+  const seededAt = profile.last_seeded_at;
+  if (!seededAt) return true; // seeded before the stamp existed
+  return Date.now() - new Date(seededAt).getTime() > SIX_MONTHS_MS;
+}
+
 interface FeedItem {
   createdAt: string;
   title?: string;
@@ -128,6 +138,16 @@ export default async function KidPage({
             >
               🌱 <span className="font-semibold">Seed {child.name}&apos;s file</span> — a few
               questions tuned to his age make everything smarter.
+            </Link>
+          )}
+          {fileNeedsRefresh(profile) && (
+            <Link
+              href={`/parent/onboarding?child=${childId}&mode=refresh`}
+              className="block mb-4 bg-golden/10 border border-golden/40 rounded-2xl px-4 py-3 text-[13px] text-espresso hover:bg-golden/20 transition-colors"
+            >
+              🌱 <span className="font-semibold">It&apos;s been a while — what&apos;s
+              changed with {child.name}?</span> Four quick questions bring his
+              file up to date.
             </Link>
           )}
           <StoryTab childId={childId} childName={child.name} />
