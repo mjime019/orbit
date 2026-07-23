@@ -67,6 +67,37 @@ Key judgment call: ROADMAP.md's "Phase 1–3 COMPLETE ✅" was scored against ac
 
 ## Changelog
 
+- **Jul 23, 2026 — Round 3 (main).** Requires `scripts/pivot/08-round3.sql`
+  run once (idempotent; code degrades warn-only without it). **tz:**
+  `src/lib/tz.ts` (`FAMILY_TZ` America/New_York) is the only date authority
+  for server renders, AI-prompt date stamps, and day boundaries — fixes the
+  UTC "Good morning" bug. **Shell:** header switcher removed (mark +
+  sign-out only); `KidScopePills` scopes chat + per-kid planners via the
+  same `orbit_child` cookie; kid-page tabs carry one-line explainers.
+  **File integrity:** `extra-registry.ts` maps every known `extra` key to a
+  label/section/renderer (JSON-string values parsed — no bracket leaks);
+  ProfileSections renders a fixed section order; family keys
+  (siblings/pets/living_situation) land in `family_context`; BasicsCard +
+  `PATCH /api/parent/kid/settings` edit name/DOB. **The core fix:**
+  `src/lib/file-context.ts` (`buildFileContext`) — one rubric feeding chat,
+  summaries, chapters, and planners; before it, everything in `extra` was
+  invisible to AI. Chat rebuilt personal-mode (`buildFamilyChatPrompt`, no
+  school-knowledge block; `buildConciergePrompt` kept for dormant demo).
+  **File writes:** `profile-merge.ts#applyProfileUpdates` is the ONE write
+  path into `child_profiles` (onboarding complete + report apply); replace
+  mode for seeds, merge mode (arrays union) for refresh/report updates.
+  **Reports:** structured dates (report_date / period_start+end);
+  `callAIWithDocument` (PDF/image blocks); `/process` stores ai_summary +
+  suggested updates; `/apply` merges only parent-approved, whitelisted
+  keys. **Re-seed:** `?mode=refresh` 4-question delta flow; >6-month
+  `last_seeded_at` banner (SQL backfills the stamp). **Planners:**
+  `planner_ideas` table + generate/ideas routes + IdeaCards; activity
+  (per kid), weekend (whole crew, family-wide `child_id null`),
+  extracurricular (categories + readiness); demo residue deleted
+  (weekend seed places, demo-school providers, activity personalize
+  route); transition parked — timeline checklist only. Boys' `children`
+  rows detached from demo school/classroom (SQL).
+
 - **Jul 17, 2026 — product overhaul (branch `overhaul`).** Speech: shared
   `use-speech-capture` hook; stop() merges the interim buffer (fixes real
   dictation tail loss); teacher observe gains interim + auto-restart. One
@@ -78,8 +109,9 @@ Key judgment call: ROADMAP.md's "Phase 1–3 COMPLETE ✅" was scored against ac
   Rafael are real `children` (camp history migrated via
   `scripts/migrate-camp-observations.mjs`). Parent app rebuilt around a
   child-centric home (AI "What this means" cached in `child_summaries`,
-  source-badged feed, module grid) inside an app shell (sticky header w/
-  child switcher via `orbit_child` cookie, bottom tab bar, EmptyState/
+  source-badged feed, module grid) inside an app shell (sticky header —
+  child switcher via `orbit_child` cookie, since moved to KidScopePills;
+  bottom tab bar, EmptyState/
   Skeleton/loading/error states); all module pages in-shell on the active
   child; `/parent/understand` merges profile + growth (parents never enter
   `/teacher` anymore); onboarding always escapable. Teacher dashboard adds
