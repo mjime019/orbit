@@ -6,6 +6,7 @@ import {
   getClassroomRoster,
   getTodayObservationCount,
 } from "@/lib/queries";
+import { familyFormatDate, familyGreeting } from "@/lib/tz";
 
 function age(dob: string | null): string {
   if (!dob) return "";
@@ -15,13 +16,6 @@ function age(dob: string | null): string {
     (diff % (365.25 * 24 * 60 * 60 * 1000)) / (30.44 * 24 * 60 * 60 * 1000)
   );
   return `${years}y ${months}m`;
-}
-
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
 }
 
 // Summer Camp classroom (scripts/schema-2026-07-overhaul.sql); its roster
@@ -46,7 +40,7 @@ export default async function TeacherDashboardPage() {
     );
   }
 
-  const today = new Date().toLocaleDateString("en-US", {
+  const today = familyFormatDate(new Date(), {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -63,7 +57,7 @@ export default async function TeacherDashboardPage() {
             </span>
           </div>
           <h1 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-espresso">
-            {greeting()}, Teacher
+            {familyGreeting()}, Teacher
           </h1>
           <p className="text-warm-gray text-sm mt-0.5">
             {today} · {classroom.name}

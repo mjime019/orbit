@@ -14,6 +14,7 @@ import {
 } from "@/lib/queries";
 import { getSessionProfile } from "@/lib/session";
 import { formatAge } from "@/lib/age";
+import { familyFormatDate } from "@/lib/tz";
 import { DomainPill } from "@/components/ui/domain-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { GrowthTimeline } from "@/components/growth/growth-timeline";
@@ -32,8 +33,19 @@ const TABS: { key: Tab; label: string; emoji: string }[] = [
   { key: "about", label: "About", emoji: "💛" },
 ];
 
+// What each tab IS — one line, so the names carry meaning.
+const TAB_EXPLAINERS: Record<Tab, string> = {
+  story: "The living feed — every moment you or school captures, plus what it means.",
+  journey:
+    "Every stretch of life becomes a chapter — written by Orbit from the moments you capture.",
+  activities:
+    "What he's actually doing — it becomes part of his file and his chapters.",
+  reports: "School's paper trail, read and remembered by Orbit.",
+  about: "His file — everything Orbit knows, and where you correct it.",
+};
+
 function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
+  return familyFormatDate(iso, {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -102,6 +114,9 @@ export default async function KidPage({
           </Link>
         ))}
       </div>
+      <p className="text-[11px] text-warm-gray -mt-3 mb-4 px-1">
+        {TAB_EXPLAINERS[tab]}
+      </p>
 
       {tab === "story" && (
         <>

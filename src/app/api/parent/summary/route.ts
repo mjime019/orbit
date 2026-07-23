@@ -4,6 +4,7 @@ import { buildWhatThisMeansPrompt } from "@/lib/prompts";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { getChildContext } from "@/lib/queries";
 import { formatAge } from "@/lib/age";
+import { familyFormatDate } from "@/lib/tz";
 
 // "What this means" summary for the child home page. Cached in
 // child_summaries and regenerated only when the observation set changes —
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
   const obsText = (observations ?? [])
     .map(
       (o: { created_at: string; source?: string; note: string }) =>
-        `[${new Date(o.created_at).toLocaleDateString()}] (${o.source === "parent" ? "parent" : "teacher"}) ${o.note}`
+        `[${familyFormatDate(o.created_at)}] (${o.source === "parent" ? "parent" : "teacher"}) ${o.note}`
     )
     .join("\n");
 

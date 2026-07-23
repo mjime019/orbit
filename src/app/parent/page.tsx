@@ -3,16 +3,10 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { getHomeKidRows } from "@/lib/queries";
 import { getSessionProfile } from "@/lib/session";
+import { familyFormatDate, familyGreeting } from "@/lib/tz";
 import { NoKidsState } from "@/components/ui/no-kids-state";
 import { KidCard } from "./kid-card";
 import { PulseRefresher } from "./pulse-refresher";
-
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
-  return "Good evening";
-}
 
 // Home = the whole family at a glance: one card per kid, one fresh sentence
 // each, capture front and center. Depth lives on each kid's page.
@@ -31,10 +25,10 @@ export default async function ParentHomePage() {
       <PulseRefresher kidIds={kidsNeedingPulse} />
       <div className="mb-5">
         <h1 className="font-[family-name:var(--font-playfair)] text-[24px] leading-tight font-semibold text-espresso">
-          {greeting()}, {displayName}
+          {familyGreeting()}, {displayName}
         </h1>
         <p className="text-sm text-warm-gray mt-0.5">
-          {new Date().toLocaleDateString("en-US", {
+          {familyFormatDate(new Date(), {
             weekday: "long",
             month: "long",
             day: "numeric",

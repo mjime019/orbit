@@ -5,13 +5,14 @@ import {
   getOrCreateConversation,
   getConversationMessages,
 } from "@/lib/queries";
-import { getActiveChildId } from "@/lib/active-child";
+import { getActiveChild } from "@/lib/active-child";
 import { getSessionProfile } from "@/lib/session";
 import { NoKidsState } from "@/components/ui/no-kids-state";
+import { KidScopePills } from "@/components/shell/kid-scope-pills";
 import { ConciergeChat } from "./concierge-chat";
 
 export default async function ChatPage() {
-  const activeChildId = await getActiveChildId();
+  const { children: kids, activeChildId } = await getActiveChild();
   if (!activeChildId) return <NoKidsState />;
   const { child, profile } = await getChildWithProfile(activeChildId);
 
@@ -38,12 +39,15 @@ export default async function ChatPage() {
     : [];
 
   return (
-    <ConciergeChat
-      childId={child.id}
-      childName={child.name}
-      conversationId={conversation?.id ?? ""}
-      initialMessages={messages}
-      interests={profile?.interests ?? []}
-    />
+    <div>
+      <KidScopePills kids={kids} activeChildId={child.id} />
+      <ConciergeChat
+        childId={child.id}
+        childName={child.name}
+        conversationId={conversation?.id ?? ""}
+        initialMessages={messages}
+        interests={profile?.interests ?? []}
+      />
+    </div>
   );
 }

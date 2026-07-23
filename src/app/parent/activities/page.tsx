@@ -5,14 +5,15 @@ import {
   getActivityRecommendations,
   getRecentObservations,
 } from "@/lib/queries";
-import { getActiveChildId } from "@/lib/active-child";
+import { getActiveChild } from "@/lib/active-child";
 import { NoKidsState } from "@/components/ui/no-kids-state";
 import { SectionHead } from "@/components/ui/section-head";
 import { EmptyState } from "@/components/ui/empty-state";
+import { KidScopePills } from "@/components/shell/kid-scope-pills";
 import { ActivityList } from "./activity-list";
 
 export default async function ActivitiesPage() {
-  const childId = await getActiveChildId();
+  const { children: kids, activeChildId: childId } = await getActiveChild();
   if (!childId) return <NoKidsState />;
   const { child, profile, classroom } = await getChildWithProfile(childId);
 
@@ -33,6 +34,7 @@ export default async function ActivitiesPage() {
 
   return (
     <div className="fade-up">
+      <KidScopePills kids={kids} activeChildId={child.id} />
       <SectionHead
         emoji="🏠"
         title={`Activities for ${child.name}`}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatAge } from "@/lib/age";
+import { familyFormatDate } from "@/lib/tz";
 
 const AVATAR_GRADIENTS = [
   "from-rust to-[#47B3FF]",
@@ -18,13 +19,6 @@ interface KidCardProps {
     source: "parent" | "school";
     created_at: string;
   } | null;
-}
-
-function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
 }
 
 // One kid, one glance: name, age, one fresh sentence, last moment.
@@ -84,7 +78,7 @@ export function KidCard({
             {lastMoment.text}
           </span>
           <span className="text-[10px] text-warm-gray/70 shrink-0">
-            {shortDate(lastMoment.created_at)}
+            {familyFormatDate(lastMoment.created_at)}
           </span>
         </div>
       )}

@@ -4,17 +4,12 @@ import { buildChapterPrompt } from "@/lib/prompts";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { getLatestJourneyChapter } from "@/lib/queries";
 import { ageBand, formatAge } from "@/lib/age";
+import { familyFormatDate, familySeasonLabel } from "@/lib/tz";
 
 const VALID_DOMAINS = new Set([
   "language", "motor_fine", "motor_gross", "social_emotional", "cognitive", "creative",
 ]);
 const MIN_NEW_OBSERVATIONS = 3;
-
-function periodLabel(now: Date): string {
-  const m = now.getMonth();
-  const season = m < 2 || m === 11 ? "Winter" : m < 5 ? "Spring" : m < 8 ? "Summer" : "Fall";
-  return `${season} ${now.getFullYear()}`;
-}
 
 // "Write the next chapter": distills the observations since the last chapter
 // into a JourneyChapter row. Age-aware framing; anchored only in real
@@ -72,7 +67,7 @@ export async function POST(request: NextRequest) {
   const obsText = (observations ?? [])
     .map(
       (o) =>
-        `[${new Date(o.created_at).toLocaleDateString()}] (${o.source === "parent" ? "parent" : "teacher"}) ${o.note}`
+        `[${familyFormatDate(o.created_at)}] (${o.source === "parent" ? "parent" : "teacher"}) ${o.note}`
     )
     .join("\n");
 
@@ -83,7 +78,7 @@ export async function POST(request: NextRequest) {
         childName: child.name,
         ageLabel: formatAge(child.date_of_birth) || "young",
         ageBand: ageBand(child.date_of_birth),
-        periodLabel: periodLabel(new Date()),
+        periodLabel: familySeasonLabel(),
         interests: profileRow?.interests ?? [],
       }),
       obsText,
@@ -108,7 +103,7 @@ export async function POST(request: NextRequest) {
 
   const row = {
     child_id: childId,
-    period: String(parsed.period ?? periodLabel(new Date())),
+    period: String(parsed.period ?? familySeasonLabel()),
     age_label: String(parsed.age_label ?? formatAge(child.date_of_birth)),
     title: String(parsed.title),
     emoji: String(parsed.emoji ?? "🌱"),

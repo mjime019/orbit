@@ -48,7 +48,8 @@ export function GenerateChapterButton({
           : `📖 Write ${childName}'s next chapter`}
       </button>
       <p className="text-[11px] text-warm-gray text-center mt-1.5">
-        {newMomentCount} moment{newMomentCount === 1 ? "" : "s"} since the last chapter
+        Orbit reads the {newMomentCount} moment{newMomentCount === 1 ? "" : "s"} since
+        the last chapter and writes what changed.
       </p>
       {error && (
         <p className="text-xs text-red-600 text-center mt-2">{error}</p>

@@ -9,6 +9,7 @@ import {
   getConversationMessages,
 } from "@/lib/queries";
 import { getSessionProfile } from "@/lib/session";
+import { familyFormatDate } from "@/lib/tz";
 
 export async function POST(request: NextRequest) {
   const { conversationId, childId, message } = await request.json();
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
     .slice(0, 10)
     .map(
       (o) =>
-        `[${new Date(o.created_at).toLocaleDateString()}] ${o.note}${
+        `[${familyFormatDate(o.created_at)}] ${o.note}${
           o.social_tag ? ` (${o.social_tag})` : ""
         }`
     )

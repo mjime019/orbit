@@ -1,4 +1,5 @@
 import { createServerSupabase } from "./supabase-server";
+import { familyDayBounds, familyToday } from "./tz";
 
 // For the demo, we use the fixed seed data UUIDs.
 // In production, these would come from the auth session.
@@ -132,7 +133,7 @@ export async function getUpcomingCalendarEvents(
   limit = 6
 ) {
   const sb = await createServerSupabase();
-  const today = new Date().toISOString().split("T")[0];
+  const today = familyToday();
   const data = mustList(
     await sb
       .from("school_calendar")
@@ -192,13 +193,13 @@ export async function getAllSentHighlights(childId: string) {
 
 export async function getTodayObservationCount(classroomId = DEMO_CLASSROOM_ID) {
   const sb = await createServerSupabase();
-  const today = new Date().toISOString().split("T")[0];
+  const { startUtcIso, endUtcIso } = familyDayBounds();
   const { count, error } = await sb
     .from("observations")
     .select("id", { count: "exact", head: true })
     .eq("classroom_id", classroomId)
-    .gte("created_at", today)
-    .lt("created_at", today + "T23:59:59.999Z");
+    .gte("created_at", startUtcIso)
+    .lt("created_at", endUtcIso);
   if (error) {
     throw new Error(`[db] count today's observations: ${error.message}`);
   }
@@ -387,7 +388,7 @@ export async function getSchoolKnowledge(schoolId = DEMO_SCHOOL_ID) {
       .from("school_calendar")
       .select("event_date, event_type, title, details")
       .eq("school_id", schoolId)
-      .gte("event_date", new Date().toISOString().split("T")[0])
+      .gte("event_date", familyToday())
       .order("event_date", { ascending: true })
       .limit(5),
   ]);

@@ -9,7 +9,7 @@ export interface ActiveChildContext {
 }
 
 // The logged-in parent's selected child, from the `orbit_child` cookie set by
-// the header switcher. Validated against their real children; falls back to
+// KidScopePills. Validated against their real children; falls back to
 // the oldest child. No children linked → null (pages render an empty state —
 // never a demo identity).
 export async function getActiveChild(): Promise<ActiveChildContext> {
