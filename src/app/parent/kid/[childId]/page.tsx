@@ -19,6 +19,7 @@ import { DomainPill } from "@/components/ui/domain-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { GrowthTimeline } from "@/components/growth/growth-timeline";
 import { ProfileSections } from "@/components/kid/profile-sections";
+import { BasicsCard } from "@/components/kid/basics-card";
 import { ActivitiesTab } from "@/components/kid/activities-tab";
 import { ReportsTab } from "@/components/kid/reports-tab";
 import { GenerateChapterButton } from "@/components/kid/generate-chapter-button";
@@ -149,6 +150,11 @@ export default async function KidPage({
               Seed {child.name}&apos;s file →
             </Link>
           </div>
+          <BasicsCard
+            childId={childId}
+            initialName={child.name}
+            initialDob={child.date_of_birth ?? null}
+          />
           <ProfileSections profile={profile} />
         </div>
       )}

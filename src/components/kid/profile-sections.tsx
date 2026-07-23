@@ -1,9 +1,18 @@
-// The Child Memory Layer, rendered: profile sections shared by the kid page
-// About tab (extracted from the old /parent/understand page).
+// The Child Memory Layer, rendered: the About tab's file view. Deterministic
+// section order from SECTION_ORDER; extra keys render through the registry
+// (unknown ones under "Anything Else") — never as raw JSON.
+
+import {
+  EXTRA_REGISTRY,
+  FAMILY_KEYS,
+  SECTION_ORDER,
+  displayPills,
+  displayValue,
+  titleCaseKey,
+  type SectionKey,
+} from "@/lib/extra-registry";
 
 function Pills({ items, color = "bg-sand text-warm-gray" }: { items: string[]; color?: string }) {
-  if (!items || items.length === 0)
-    return <p className="text-xs text-warm-gray/60 italic">Not set yet</p>;
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map((item) => (
@@ -15,149 +24,236 @@ function Pills({ items, color = "bg-sand text-warm-gray" }: { items: string[]; c
   );
 }
 
-function Section({ emoji, title, children }: { emoji: string; title: string; children: React.ReactNode }) {
+function Labeled({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold text-warm-gray uppercase tracking-wide mb-1.5">
+        {label}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function Paragraph({ text }: { text: string }) {
+  return <p className="text-xs text-espresso/80 leading-relaxed">{text}</p>;
+}
+
+function Quotes({ items }: { items: string[] }) {
+  return (
+    <div className="space-y-1.5">
+      {items.map((q) => (
+        <p key={q} className="text-xs text-espresso/80 italic leading-relaxed">
+          &ldquo;{q.replace(/^["“]|["”]$/g, "")}&rdquo;
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function Section({
+  emoji,
+  title,
+  children,
+}: {
+  emoji: string;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="bg-white rounded-2xl shadow-sm p-5">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-base">{emoji}</span>
         <h3 className="text-[11px] font-bold text-espresso uppercase tracking-wider">{title}</h3>
       </div>
-      {children}
+      <div className="space-y-3">{children}</div>
     </div>
   );
 }
 
-function JsonDisplay({ data, fallback = "Not set yet" }: { data: Record<string, unknown>; fallback?: string }) {
-  const entries = Object.entries(data || {}).filter(([, v]) => v !== null && v !== "" && v !== undefined);
-  if (entries.length === 0)
-    return <p className="text-xs text-warm-gray/60 italic">{fallback}</p>;
+// Render one extra-registry value by its declared renderer. Returns null for
+// empty values so empty sections disappear.
+function renderExtraValue(
+  keyName: string,
+  value: unknown,
+  spec: { label: string; render: "pills" | "paragraph" | "quotes" },
+  pillColor: string
+): React.ReactNode | null {
+  if (spec.render === "pills" || spec.render === "quotes") {
+    const items = displayPills(value);
+    if (items.length === 0) return null;
+    return (
+      <Labeled key={keyName} label={spec.label}>
+        {spec.render === "quotes" ? <Quotes items={items} /> : <Pills items={items} color={pillColor} />}
+      </Labeled>
+    );
+  }
+  const text = displayValue(value);
+  if (!text) return null;
   return (
-    <div className="space-y-2">
-      {entries.map(([key, value]) => (
-        <div key={key}>
-          <p className="text-[10px] font-semibold text-warm-gray uppercase tracking-wide mb-0.5">
-            {key.replace(/_/g, " ")}
-          </p>
-          <p className="text-xs text-espresso/80 leading-relaxed">
-            {typeof value === "string" ? value : JSON.stringify(value)}
-          </p>
-        </div>
-      ))}
-    </div>
+    <Labeled key={keyName} label={spec.label}>
+      <Paragraph text={text} />
+    </Labeled>
   );
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export function ProfileSections({ profile }: { profile: any }) {
+  const extra: Record<string, unknown> = profile?.extra ?? {};
+
+  // extra keys grouped by their registry section; unknowns go to "other".
+  const extraBySection = new Map<SectionKey, React.ReactNode[]>();
+  for (const [key, value] of Object.entries(extra)) {
+    const spec = EXTRA_REGISTRY[key] ?? {
+      label: titleCaseKey(key),
+      section: "other" as SectionKey,
+      render: Array.isArray(value) ? ("pills" as const) : ("paragraph" as const),
+    };
+    const node = renderExtraValue(key, value, spec, "bg-sand text-warm-gray");
+    if (node) {
+      const list = extraBySection.get(spec.section) ?? [];
+      list.push(node);
+      extraBySection.set(spec.section, list);
+    }
+  }
+  const extrasFor = (section: SectionKey) => extraBySection.get(section) ?? [];
+
+  // Family: the family_context column and family-keyed extras render
+  // together, so pre-fix rows (family data still in extra) display fine.
+  const familyContext: Record<string, unknown> = profile?.family_context ?? {};
+  const familyNodes: React.ReactNode[] = [];
+  for (const [key, value] of Object.entries(familyContext)) {
+    const spec = EXTRA_REGISTRY[key] ?? {
+      label: titleCaseKey(key),
+      section: "family" as SectionKey,
+      render: Array.isArray(value) ? ("pills" as const) : ("paragraph" as const),
+    };
+    // Skip if the same key also sits in extra (already rendered there).
+    if (FAMILY_KEYS.has(key) && extra[key] !== undefined) continue;
+    const node = renderExtraValue(`fc_${key}`, value, spec, "bg-sand text-warm-gray");
+    if (node) familyNodes.push(node);
+  }
+
+  const routines: Record<string, unknown> = profile?.routines ?? {};
+  const routineNodes = Object.entries(routines)
+    .map(([key, value]) => {
+      const text = displayValue(value);
+      if (!text) return null;
+      return (
+        <Labeled key={key} label={titleCaseKey(key)}>
+          <Paragraph text={text} />
+        </Labeled>
+      );
+    })
+    .filter(Boolean);
+
+  const parentValues = displayPills(profile?.parent_values);
+
+  const sectionContent: Record<SectionKey, React.ReactNode[]> = {
+    temperament: extrasFor("temperament"),
+    interests: [
+      profile?.interests?.length ? (
+        <Pills key="interests" items={profile.interests} color="bg-golden/15 text-golden" />
+      ) : null,
+      profile?.emerging_interests?.length ? (
+        <Labeled key="emerging" label="Emerging">
+          <Pills items={profile.emerging_interests} color="bg-sky/10 text-sky" />
+        </Labeled>
+      ) : null,
+      profile?.play_style ? (
+        <Labeled key="play" label="How he plays">
+          <p className="text-sm text-espresso font-medium">
+            {displayValue(profile.play_style)}
+          </p>
+          {profile.play_style_notes && (
+            <p className="text-xs text-warm-gray mt-1 leading-relaxed">
+              {displayValue(profile.play_style_notes)}
+            </p>
+          )}
+        </Labeled>
+      ) : null,
+      ...extrasFor("interests"),
+    ].filter(Boolean),
+    school: extrasFor("school"),
+    growing: extrasFor("growing"),
+    sensitivities: [
+      profile?.food_sensitivities?.length ? (
+        <Labeled key="food" label="Food">
+          <Pills items={profile.food_sensitivities} color="bg-red-50 text-red-700" />
+        </Labeled>
+      ) : null,
+      profile?.sensory_sensitivities?.length ? (
+        <Labeled key="sensory" label="Sensory">
+          <Pills items={profile.sensory_sensitivities} color="bg-orange-50 text-orange-700" />
+        </Labeled>
+      ) : null,
+      profile?.emotional_triggers?.length ? (
+        <Labeled key="emotional" label="Emotional Triggers">
+          <Pills items={profile.emotional_triggers} color="bg-purple-50 text-purple-700" />
+        </Labeled>
+      ) : null,
+      ...extrasFor("sensitivities"),
+    ].filter(Boolean),
+    comfort: [
+      profile?.comfort_helps?.length ? (
+        <Labeled key="helps" label="What helps">
+          <Pills items={profile.comfort_helps} color="bg-sage/10 text-sage" />
+        </Labeled>
+      ) : null,
+      profile?.comfort_escalates?.length ? (
+        <Labeled key="escalates" label="What escalates">
+          <Pills items={profile.comfort_escalates} color="bg-rust/10 text-rust" />
+        </Labeled>
+      ) : null,
+      ...extrasFor("comfort"),
+    ].filter(Boolean),
+    routines: [...routineNodes, ...extrasFor("routines")],
+    family: [...familyNodes, ...extrasFor("family")],
+    goals: [
+      profile?.parent_goals?.length ? (
+        <ul key="goals" className="space-y-2">
+          {profile.parent_goals.map((goal: string, i: number) => (
+            <li key={i} className="flex items-start gap-2">
+              <span className="text-sage text-xs mt-0.5">●</span>
+              <span className="text-xs text-espresso/80 leading-relaxed">{goal}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null,
+      ...extrasFor("goals"),
+    ].filter(Boolean),
+    values: [
+      parentValues.length ? (
+        <Labeled key="values" label="What matters most">
+          <Pills items={parentValues} color="bg-lavender/30 text-espresso" />
+        </Labeled>
+      ) : null,
+      ...extrasFor("values"),
+    ].filter(Boolean),
+    other: extrasFor("other"),
+  };
+
+  const visible = SECTION_ORDER.filter((s) => sectionContent[s.key].length > 0);
+
+  if (visible.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
+        <p className="text-3xl mb-2">🌱</p>
+        <p className="text-sm text-espresso font-medium mb-1">Nothing in the file yet</p>
+        <p className="text-xs text-warm-gray">
+          Seed the file — a few questions bring out what makes him him.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <Section emoji="⭐" title="Interests">
-        <Pills items={profile?.interests ?? []} color="bg-golden/15 text-golden" />
-        {profile?.emerging_interests && profile.emerging_interests.length > 0 && (
-          <div className="mt-3">
-            <p className="text-[10px] font-semibold text-warm-gray uppercase tracking-wide mb-1.5">
-              Emerging
-            </p>
-            <Pills items={profile.emerging_interests} color="bg-sky/10 text-sky" />
-          </div>
-        )}
-      </Section>
-
-      <Section emoji="🎮" title="Play Style">
-        {profile?.play_style ? (
-          <div>
-            <p className="text-sm text-espresso font-medium">{profile.play_style}</p>
-            {profile.play_style_notes && (
-              <p className="text-xs text-warm-gray mt-1 leading-relaxed">
-                {profile.play_style_notes}
-              </p>
-            )}
-          </div>
-        ) : (
-          <p className="text-xs text-warm-gray/60 italic">Not set yet</p>
-        )}
-      </Section>
-
-      <Section emoji="🎯" title="Your Goals">
-        {profile?.parent_goals && profile.parent_goals.length > 0 ? (
-          <ul className="space-y-2">
-            {profile.parent_goals.map((goal: string, i: number) => (
-              <li key={i} className="flex items-start gap-2">
-                <span className="text-sage text-xs mt-0.5">●</span>
-                <span className="text-xs text-espresso/80 leading-relaxed">{goal}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-xs text-warm-gray/60 italic">Not set yet</p>
-        )}
-      </Section>
-
-      <Section emoji="🌡️" title="Sensitivities">
-        <div className="space-y-3">
-          {profile?.food_sensitivities && profile.food_sensitivities.length > 0 && (
-            <div>
-              <p className="text-[10px] font-semibold text-warm-gray uppercase tracking-wide mb-1.5">Food</p>
-              <Pills items={profile.food_sensitivities} color="bg-red-50 text-red-700" />
-            </div>
-          )}
-          {profile?.sensory_sensitivities && profile.sensory_sensitivities.length > 0 && (
-            <div>
-              <p className="text-[10px] font-semibold text-warm-gray uppercase tracking-wide mb-1.5">Sensory</p>
-              <Pills items={profile.sensory_sensitivities} color="bg-orange-50 text-orange-700" />
-            </div>
-          )}
-          {profile?.emotional_triggers && profile.emotional_triggers.length > 0 && (
-            <div>
-              <p className="text-[10px] font-semibold text-warm-gray uppercase tracking-wide mb-1.5">Emotional Triggers</p>
-              <Pills items={profile.emotional_triggers} color="bg-purple-50 text-purple-700" />
-            </div>
-          )}
-          {!profile?.food_sensitivities?.length &&
-            !profile?.sensory_sensitivities?.length &&
-            !profile?.emotional_triggers?.length && (
-              <p className="text-xs text-warm-gray/60 italic">No sensitivities recorded</p>
-            )}
-        </div>
-      </Section>
-
-      <Section emoji="💛" title="Comfort & Regulation">
-        <div className="space-y-3">
-          {profile?.comfort_helps && profile.comfort_helps.length > 0 && (
-            <div>
-              <p className="text-[10px] font-semibold text-sage uppercase tracking-wide mb-1.5">
-                What helps
-              </p>
-              <Pills items={profile.comfort_helps} color="bg-sage/10 text-sage" />
-            </div>
-          )}
-          {profile?.comfort_escalates && profile.comfort_escalates.length > 0 && (
-            <div>
-              <p className="text-[10px] font-semibold text-rust uppercase tracking-wide mb-1.5">
-                What escalates
-              </p>
-              <Pills items={profile.comfort_escalates} color="bg-rust/10 text-rust" />
-            </div>
-          )}
-          {!profile?.comfort_helps?.length && !profile?.comfort_escalates?.length && (
-            <p className="text-xs text-warm-gray/60 italic">Not set yet</p>
-          )}
-        </div>
-      </Section>
-
-      <Section emoji="🕐" title="Routines">
-        <JsonDisplay data={profile?.routines ?? {}} />
-      </Section>
-
-      <Section emoji="👨‍👩‍👦" title="Family Context">
-        <JsonDisplay data={profile?.family_context ?? {}} />
-      </Section>
-
-      {profile?.extra && Object.keys(profile.extra).length > 0 && (
-        <Section emoji="📝" title="More Notes">
-          <JsonDisplay data={profile.extra} />
+      {visible.map((s) => (
+        <Section key={s.key} emoji={s.emoji} title={s.title}>
+          {sectionContent[s.key]}
         </Section>
-      )}
+      ))}
     </div>
   );
 }

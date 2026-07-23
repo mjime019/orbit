@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { getSessionProfile } from "@/lib/session";
+import { FAMILY_KEYS } from "@/lib/extra-registry";
 
 interface ResponsePayload {
   promptKey: string;
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
 
   const profileUpdate: Record<string, unknown> = { onboarding_complete: true };
   const extraUpdate: Record<string, unknown> = {};
+  const familyUpdate: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(merged)) {
     const column = COLUMN_MAP[key];
@@ -84,8 +86,10 @@ export async function POST(request: NextRequest) {
       }
     } else if (key === "routines") {
       profileUpdate.routines = value;
+    } else if (FAMILY_KEYS.has(key)) {
+      familyUpdate[key] = value; // siblings, pets, living_situation → family_context
     } else {
-      extraUpdate[key] = value; // growing_edges, temperament_notes, school_notes, siblings, pets, philosophy, ...
+      extraUpdate[key] = value; // growing_edges, temperament_notes, school_notes, philosophy, ...
     }
   }
 
@@ -107,14 +111,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ─── Merge into extra without clobbering earlier seeds ───────────
-  if (Object.keys(extraUpdate).length > 0) {
+  // ─── Merge into extra/family_context without clobbering earlier seeds ───
+  if (Object.keys(extraUpdate).length > 0 || Object.keys(familyUpdate).length > 0) {
     const { data: existing } = await sb
       .from("child_profiles")
-      .select("extra")
+      .select("extra, family_context")
       .eq("child_id", childId)
       .maybeSingle();
-    profileUpdate.extra = { ...(existing?.extra ?? {}), ...extraUpdate };
+    if (Object.keys(extraUpdate).length > 0) {
+      profileUpdate.extra = { ...(existing?.extra ?? {}), ...extraUpdate };
+    }
+    if (Object.keys(familyUpdate).length > 0) {
+      profileUpdate.family_context = {
+        ...(existing?.family_context ?? {}),
+        ...familyUpdate,
+      };
+    }
   }
 
   const { error } = await sb
@@ -128,6 +140,16 @@ export async function POST(request: NextRequest) {
       { error: `Couldn't update the profile: ${error.message}` },
       { status: 500 }
     );
+  }
+
+  // Best-effort re-seed stamp — separate update so a missing column
+  // (SQL batch not run yet) never fails the save.
+  const { error: stampError } = await sb
+    .from("child_profiles")
+    .update({ last_seeded_at: new Date().toISOString() })
+    .eq("child_id", childId);
+  if (stampError) {
+    console.warn("[Onboarding Complete] last_seeded_at stamp skipped:", stampError.message);
   }
 
   return NextResponse.json({
