@@ -63,17 +63,92 @@ export async function callAI(
       .join("");
     return { text, source: "anthropic" };
   } catch (err) {
-    // The SDK already retried transient failures (2x) before this throws —
-    // don't add another retry layer on top.
-    const rateLimited =
-      err instanceof Anthropic.APIError && err.status === 429;
-    const detail = err instanceof Error ? err.message : String(err);
-    console.error("[AI] Anthropic error:", detail);
+    throw toUnavailable(err);
+  }
+}
+
+// Same contract as callAI, but the user turn carries a document (PDF) or
+// image content block so Claude reads the actual file. Used by report
+// ingestion.
+export async function callAIWithDocument(
+  systemPrompt: string,
+  doc: { base64: string; mediaType: string },
+  userMessage?: string,
+  options?: { maxOutputTokens?: number }
+): Promise<AIResult> {
+  if (mockMode) {
+    return {
+      text: JSON.stringify({
+        summary: "Mock report summary (AI_MODE=mock).",
+        strengths: ["Mock strength"],
+        growth_areas: ["Mock growth area"],
+        notable_quotes: [],
+        suggested_file_updates: {},
+      }),
+      source: "mock",
+    };
+  }
+
+  if (!anthropic) {
     throw new AIUnavailableError(
-      rateLimited
-        ? "AI rate limit reached. Please try again in a few seconds."
-        : "AI service unavailable. Please try again.",
-      rateLimited
+      "AI is not configured (ANTHROPIC_API_KEY missing). Set AI_MODE=mock for local development."
     );
   }
+
+  const fileBlock =
+    doc.mediaType === "application/pdf"
+      ? {
+          type: "document" as const,
+          source: {
+            type: "base64" as const,
+            media_type: "application/pdf" as const,
+            data: doc.base64,
+          },
+        }
+      : {
+          type: "image" as const,
+          source: {
+            type: "base64" as const,
+            media_type: doc.mediaType as "image/jpeg" | "image/png" | "image/webp",
+            data: doc.base64,
+          },
+        };
+
+  try {
+    const response = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: options?.maxOutputTokens ?? 1500,
+      system: systemPrompt,
+      messages: [
+        {
+          role: "user",
+          content: [
+            fileBlock,
+            { type: "text", text: userMessage ?? "Read this report." },
+          ],
+        },
+      ],
+    });
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    return { text, source: "anthropic" };
+  } catch (err) {
+    throw toUnavailable(err);
+  }
+}
+
+// The SDK already retried transient failures (2x) before this throws —
+// don't add another retry layer on top.
+function toUnavailable(err: unknown): AIUnavailableError {
+  const rateLimited = err instanceof Anthropic.APIError && err.status === 429;
+  const detail = err instanceof Error ? err.message : String(err);
+  console.error("[AI] Anthropic error:", detail);
+  return new AIUnavailableError(
+    rateLimited
+      ? "AI rate limit reached. Please try again in a few seconds."
+      : "AI service unavailable. Please try again.",
+    rateLimited
+  );
 }

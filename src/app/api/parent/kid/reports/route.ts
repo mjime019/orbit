@@ -22,6 +22,13 @@ export async function POST(req: NextRequest) {
   const kind = form.get("kind")?.toString() ?? "school_report";
   const periodLabel = form.get("periodLabel")?.toString() || null;
   const notes = form.get("notes")?.toString() || null;
+  const isoDate = (v: FormDataEntryValue | null) => {
+    const s = v?.toString() ?? "";
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+  };
+  const reportDate = isoDate(form.get("reportDate"));
+  const periodStart = isoDate(form.get("periodStart"));
+  const periodEnd = isoDate(form.get("periodEnd"));
 
   if (!(file instanceof File) || !childId || !title?.trim()) {
     return NextResponse.json(
@@ -58,19 +65,32 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { data, error } = await sb
+  const baseRow = {
+    child_id: childId,
+    title: title.trim(),
+    kind: KINDS.has(kind) ? kind : "other",
+    period_label: periodLabel,
+    storage_path: storagePath,
+    notes,
+    uploaded_by: profileId,
+  };
+
+  let { data, error } = await sb
     .from("reports")
     .insert({
-      child_id: childId,
-      title: title.trim(),
-      kind: KINDS.has(kind) ? kind : "other",
-      period_label: periodLabel,
-      storage_path: storagePath,
-      notes,
-      uploaded_by: profileId,
+      ...baseRow,
+      report_date: reportDate,
+      period_start: periodStart,
+      period_end: periodEnd,
     })
     .select()
     .single();
+  if (error) {
+    // Date columns may not exist yet (SQL batch not run) — retry the
+    // legacy shape so the upload still lands.
+    console.warn("[Reports] insert with dates failed, retrying legacy:", error.message);
+    ({ data, error } = await sb.from("reports").insert(baseRow).select().single());
+  }
   if (error) {
     // The file is up but the row failed — surface it; re-upload is harmless.
     return NextResponse.json({ error: error.message }, { status: 500 });
