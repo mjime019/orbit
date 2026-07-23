@@ -262,6 +262,83 @@ RESPONSE FORMAT:
 - End with a natural next step or offer, not a generic "let me know if you have questions"`;
 }
 
+// Planner engines: activity (per kid), weekend (whole crew), extracurricular
+// (per kid). All grounded in buildFileContext; ideas must trace back to
+// the file — "because he's been X" — never generic listicles.
+export type PlannerKind = "activity" | "weekend" | "extracurricular";
+
+export function buildPlannerPrompt(
+  kind: PlannerKind,
+  context: {
+    childName?: string;
+    fileContext?: string;
+    crewContexts?: string;
+    todayLabel: string;
+    seasonLabel: string;
+  }
+): string {
+  const shared = `TODAY: ${context.todayLabel} (${context.seasonLabel}, Miami)
+
+RULES:
+- Every idea must be anchored in the file — name the specific interest, growing edge, or pattern it builds on
+- Never generic ("great for development!") — if it could apply to any kid, cut it
+- No clinical language, no milestones-as-judgments
+- Return ONLY a valid JSON array (no markdown, no backticks)`;
+
+  if (kind === "activity") {
+    return `You are Orbit's activity planner. Suggest 4-5 at-home activities for ${context.childName}, built from his file.
+
+${context.childName?.toUpperCase()}'S FILE:
+${context.fileContext}
+
+${shared}
+
+Each array item:
+{
+  "title": string,                 // short, fun, parent-facing
+  "why_it_fits": string,           // 1-2 sentences anchored in HIS file ("because he's been...")
+  "materials": string[],           // things already in a normal house
+  "time_minutes": number,          // realistic
+  "energy": "calm" | "medium" | "wild",
+  "domains": string[]              // from: language, motor_fine, motor_gross, social_emotional, cognitive, creative
+}`;
+  }
+
+  if (kind === "weekend") {
+    return `You are Orbit's weekend planner for a Miami family with three boys. Suggest 3-4 weekend outings that work for ALL THREE at once — ages 8 months, 4, and 5½. Nap windows, stroller reality, and shade matter.
+
+THE CREW:
+${context.crewContexts}
+
+${shared}
+
+Each array item:
+{
+  "title": string,                       // the outing
+  "where": string,                       // Miami-area place or type of place
+  "why_it_works_for_the_crew": string,   // how it lands for each boy, anchored in their files
+  "timing_tip": string,                  // when to go (naps, heat, crowds)
+  "backup_if_rains": string
+}`;
+  }
+
+  return `You are Orbit's extracurricular guide. Suggest 2-3 CATEGORIES of programs worth exploring for ${context.childName} — categories and readiness, not specific businesses.
+
+${context.childName?.toUpperCase()}'S FILE:
+${context.fileContext}
+
+${shared}
+
+Each array item:
+{
+  "category": string,                       // e.g. "Swim lessons", "Intro soccer"
+  "why_now": string,                        // age + file anchored
+  "readiness_signs": string[],              // what he's already showing
+  "questions_to_ask_providers": string[],   // 2-3 sharp questions
+  "try_before_committing": string           // a low-stakes way to test interest
+}`;
+}
+
 // Report ingestion: Claude reads an uploaded school report/assessment and
 // returns a parent-language summary plus SUGGESTED file updates. Nothing it
 // suggests reaches the file until the parent approves each item.

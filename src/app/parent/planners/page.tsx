@@ -11,25 +11,25 @@ const PLANNERS = [
     href: "/parent/activities",
     emoji: "🏠",
     title: "Activity planner",
-    body: "At-home activities matched to what's lighting them up right now",
+    body: "At-home ideas generated from his file — interests, growing edges, energy",
   },
   {
     href: "/parent/weekends",
     emoji: "🌳",
     title: "Weekend planner",
-    body: "Places around Miami scored for your kid's fit",
+    body: "Miami outings that work for all three boys at once",
   },
   {
     href: "/parent/extras",
     emoji: "⚽",
     title: "Extracurriculars",
-    body: "Classes and programs, matched by readiness",
+    body: "What he's ready for — categories, readiness signs, questions to ask",
   },
   {
     href: "/parent/transition",
     emoji: "🎒",
     title: "School transition",
-    body: "The road to kindergarten, one step at a time",
+    body: "Parked · kindergarten timeline checklist only",
   },
 ];
 

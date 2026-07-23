@@ -1,17 +1,17 @@
 export const dynamic = "force-dynamic";
 
-import { getChildWithProfile, getExtracurricularProviders } from "@/lib/queries";
+import { getChildWithProfile } from "@/lib/queries";
 import { getActiveChild } from "@/lib/active-child";
 import { NoKidsState } from "@/components/ui/no-kids-state";
 import { SectionHead } from "@/components/ui/section-head";
 import { EmptyState } from "@/components/ui/empty-state";
 import { KidScopePills } from "@/components/shell/kid-scope-pills";
-import { ProviderList } from "./provider-list";
+import { IdeaCards } from "@/components/planner/idea-cards";
 
 export default async function ExtrasPage() {
   const { children: kids, activeChildId: childId } = await getActiveChild();
   if (!childId) return <NoKidsState />;
-  const { child, profile } = await getChildWithProfile(childId);
+  const { child } = await getChildWithProfile(childId);
 
   if (!child) {
     return (
@@ -23,23 +23,19 @@ export default async function ExtrasPage() {
     );
   }
 
-  const providers = await getExtracurricularProviders(
-    child.school_id ?? undefined
-  );
-
   return (
     <div className="fade-up">
       <KidScopePills kids={kids} activeChildId={child.id} />
       <SectionHead
         emoji="⭐"
-        title="Extracurriculars"
-        subtitle={`Curated programs for ${child.name}`}
+        title={`Extracurriculars for ${child.name}`}
+        subtitle="What he's ready for — categories, not sales pitches"
       />
       <div className="mt-4">
-        <ProviderList
-          providers={providers}
+        <IdeaCards
+          kind="extracurricular"
+          childId={child.id}
           childName={child.name}
-          interests={profile?.interests ?? []}
         />
       </div>
     </div>

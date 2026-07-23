@@ -1,65 +1,31 @@
 export const dynamic = "force-dynamic";
 
-import {
-  getChildWithProfile,
-  getAllWeekendPlaces,
-  getWeekendRecommendations,
-} from "@/lib/queries";
 import { getActiveChild } from "@/lib/active-child";
 import { NoKidsState } from "@/components/ui/no-kids-state";
 import { SectionHead } from "@/components/ui/section-head";
-import { EmptyState } from "@/components/ui/empty-state";
-import { KidScopePills } from "@/components/shell/kid-scope-pills";
-import { WeekendList } from "./weekend-list";
+import { IdeaCards } from "@/components/planner/idea-cards";
 
+// Family-wide: one plan that works for every kid at once, from all their
+// files. No per-kid switcher here on purpose.
 export default async function WeekendsPage() {
-  const { children: kids, activeChildId: childId } = await getActiveChild();
-  if (!childId) return <NoKidsState />;
-  const { child, profile } = await getChildWithProfile(childId);
+  const { children: kids } = await getActiveChild();
+  if (kids.length === 0) return <NoKidsState />;
 
-  if (!child) {
-    return (
-      <EmptyState
-        emoji="🌊"
-        title="We couldn't find this child"
-        action={{ href: "/parent", label: "Back home" }}
-      />
-    );
-  }
-
-  const [places, recommendations] = await Promise.all([
-    getAllWeekendPlaces(),
-    getWeekendRecommendations(child.id, 10),
-  ]);
-
-  // Build a map of place_id -> recommendation for quick lookup
-  const recMap = new Map(recommendations.map((r) => [r.place_id, r]));
-
-  // Merge recommendations onto places; recommended first by fit score
-  const placesWithRecs = places.map((place) => ({
-    ...place,
-    recommendation: recMap.get(place.id) ?? null,
-  }));
-  placesWithRecs.sort((a, b) => {
-    const aScore = a.recommendation?.fit_score ?? -1;
-    const bScore = b.recommendation?.fit_score ?? -1;
-    return bScore - aScore;
-  });
+  const names = kids.map((k) => k.name);
+  const crew =
+    names.length > 1
+      ? `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`
+      : names[0];
 
   return (
     <div className="fade-up">
-      <KidScopePills kids={kids} activeChildId={child.id} />
       <SectionHead
         emoji="🌊"
-        title="Weekend Picks"
-        subtitle={`Places perfect for ${child.name} this weekend`}
+        title="Weekend planner"
+        subtitle={`One plan for the whole crew — ${crew}`}
       />
       <div className="mt-4">
-        <WeekendList
-          places={placesWithRecs}
-          childName={child.name}
-          interests={profile?.interests ?? []}
-        />
+        <IdeaCards kind="weekend" />
       </div>
     </div>
   );
