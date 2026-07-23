@@ -3,6 +3,7 @@ import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildChapterPrompt } from "@/lib/prompts";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { getLatestJourneyChapter } from "@/lib/queries";
+import { buildFileContext } from "@/lib/file-context";
 import { ageBand, formatAge } from "@/lib/age";
 import { familyFormatDate, familySeasonLabel } from "@/lib/tz";
 
@@ -58,11 +59,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data: profileRow } = await sb
-    .from("child_profiles")
-    .select("interests")
-    .eq("child_id", childId)
-    .maybeSingle();
+  const [{ data: profileRow }, fileContext] = await Promise.all([
+    sb
+      .from("child_profiles")
+      .select("interests")
+      .eq("child_id", childId)
+      .maybeSingle(),
+    buildFileContext(childId),
+  ]);
 
   const obsText = (observations ?? [])
     .map(
@@ -81,7 +85,9 @@ export async function POST(request: NextRequest) {
         periodLabel: familySeasonLabel(),
         interests: profileRow?.interests ?? [],
       }),
-      obsText,
+      fileContext
+        ? `${fileContext}\n\nOBSERVATIONS SINCE THE LAST CHAPTER:\n${obsText}`
+        : obsText,
       { maxOutputTokens: 1200 }
     );
     const cleaned = result.text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();

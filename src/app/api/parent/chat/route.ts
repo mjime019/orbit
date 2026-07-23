@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI, AIUnavailableError } from "@/lib/ai";
-import { buildConciergePrompt } from "@/lib/prompts";
+import { buildFamilyChatPrompt } from "@/lib/prompts";
 import { createServerSupabase } from "@/lib/supabase-server";
 import {
-  getChildContext,
   getRecentObservations,
-  getSchoolKnowledge,
   getConversationMessages,
+  getLatestJourneyChapter,
 } from "@/lib/queries";
+import { buildFileContext } from "@/lib/file-context";
 import { getSessionProfile } from "@/lib/session";
 import { familyFormatDate } from "@/lib/tz";
 
@@ -38,37 +38,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 2. Fetch all context in parallel
-  const [context, observations, schoolKnowledge, history] = await Promise.all([
-    getChildContext(childId),
-    getRecentObservations(childId, 15),
-    getSchoolKnowledge(),
-    getConversationMessages(conversationId, 20),
-  ]);
+  // 2. Fetch all context in parallel: the kid's file, recent moments,
+  // his latest chapter, and the conversation so far.
+  const [{ data: child }, fileContext, observations, latestChapter, history, sessionProfile] =
+    await Promise.all([
+      sb.from("children").select("name").eq("id", childId).maybeSingle(),
+      buildFileContext(childId),
+      getRecentObservations(childId, 15),
+      getLatestJourneyChapter(childId),
+      getConversationMessages(conversationId, 20),
+      getSessionProfile(),
+    ]);
+  if (!child) {
+    return NextResponse.json({ error: "Child not found" }, { status: 404 });
+  }
 
-  // 3. The logged-in parent
-  const sessionProfile = await getSessionProfile();
-
-  // 4. Build child profile summary
-  const profileSummary = [
-    `Name: ${context.childName}, Age: ${context.childAge}`,
-    `Classroom: ${context.classroomName}`,
-    context.classroomTheme
-      ? `Current theme: ${context.classroomTheme}`
-      : null,
-    context.interests.length > 0
-      ? `Interests: ${context.interests.join(", ")}`
-      : null,
-    context.parentGoals.length > 0
-      ? `Parent goals: ${context.parentGoals.join(", ")}`
-      : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  // 5. Build observations summary
   const obsSummary = observations
-    .slice(0, 10)
+    .slice(0, 15)
     .map(
       (o) =>
         `[${familyFormatDate(o.created_at)}] ${o.note}${
@@ -77,8 +63,11 @@ export async function POST(request: NextRequest) {
     )
     .join("\n");
 
-  // 6. Build conversation history (exclude the message we just inserted —
-  // it is passed separately as the user turn)
+  const chapterSummary = latestChapter
+    ? `"${latestChapter.title}" (${latestChapter.period}): ${latestChapter.summary}`
+    : "No chapters written yet.";
+
+  // Exclude the message we just inserted — it is passed as the user turn.
   const priorHistory = history.filter(
     (m, i) =>
       !(i === history.length - 1 && m.role === "parent" && m.content === message)
@@ -88,14 +77,18 @@ export async function POST(request: NextRequest) {
     .map((m) => `${m.role === "parent" ? "Parent" : "Orbit"}: ${m.content}`)
     .join("\n\n");
 
-  // 7. Build prompt and call AI
-  const systemPrompt = buildConciergePrompt({
+  const systemPrompt = buildFamilyChatPrompt({
     parentName: sessionProfile.displayName,
-    childName: context.childName,
-    childAge: context.childAge,
-    childProfile: profileSummary,
-    recentObservations: obsSummary || "No recent observations.",
-    schoolKnowledge: schoolKnowledge,
+    childName: child.name,
+    fileContext: fileContext || "File is empty — nothing seeded yet.",
+    recentObservations: obsSummary || "No moments captured recently.",
+    latestChapterSummary: chapterSummary,
+    todayLabel: familyFormatDate(new Date(), {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }),
     conversationHistory: conversationHistory || "No previous messages.",
   });
 
@@ -111,7 +104,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: errMsg }, { status });
   }
 
-  // 8. Insert AI response
+  // Insert AI response
   const { data: aiMessage, error: aiInsertError } = await sb
     .from("messages")
     .insert({
@@ -130,7 +123,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 9. Update conversation timestamp
+  // Update conversation timestamp
   await sb
     .from("conversations")
     .update({ updated_at: new Date().toISOString() })

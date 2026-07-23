@@ -12,10 +12,10 @@ interface Props {
 }
 
 const SUGGESTED_QUESTIONS = [
-  "How's {name} doing socially?",
-  "Activities for home tonight?",
-  "What's the classroom working on?",
+  "What should we do with {name} tonight?",
+  "What's been hard for {name} lately?",
   "Tell me about {name}'s week",
+  "Help with a rough bedtime",
 ];
 
 export function ConciergeChat({
@@ -133,8 +133,8 @@ export function ConciergeChat({
                 Ask me anything about {childName}
               </h2>
               <p className="text-warm-gray text-sm max-w-[320px] mx-auto">
-                I know {childName}&apos;s observations, interests, classroom
-                themes, and school info. How can I help?
+                I know {childName}&apos;s file — his moments, his story, what
+                helps and what&apos;s hard. How can I help?
               </p>
             </div>
           )}

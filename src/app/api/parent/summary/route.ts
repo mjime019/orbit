@@ -3,6 +3,7 @@ import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildWhatThisMeansPrompt } from "@/lib/prompts";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { getChildContext } from "@/lib/queries";
+import { buildFileContext } from "@/lib/file-context";
 import { formatAge } from "@/lib/age";
 import { familyFormatDate } from "@/lib/tz";
 
@@ -58,15 +59,17 @@ export async function POST(request: NextRequest) {
 
   // select("*") stays resilient if optional columns (e.g. `source`) are
   // missing — never let a schema mismatch feed the AI an empty prompt.
-  const [context, { data: observations, error: obsError }] = await Promise.all([
-    getChildContext(childId),
-    sb
-      .from("observations")
-      .select("*")
-      .eq("child_id", childId)
-      .order("created_at", { ascending: false })
-      .limit(15),
-  ]);
+  const [context, fileContext, { data: observations, error: obsError }] =
+    await Promise.all([
+      getChildContext(childId),
+      buildFileContext(childId),
+      sb
+        .from("observations")
+        .select("*")
+        .eq("child_id", childId)
+        .order("created_at", { ascending: false })
+        .limit(15),
+    ]);
 
   if (obsError) {
     return NextResponse.json(
@@ -103,7 +106,9 @@ export async function POST(request: NextRequest) {
         ageLabel: formatAge(childRow?.date_of_birth ?? null) || `${context.childAge} yr`,
         interests: context.interests,
       }),
-      obsText,
+      fileContext
+        ? `${fileContext}\n\nOBSERVATIONS:\n${obsText}`
+        : obsText,
       { maxOutputTokens: 500 }
     );
     const cleaned = result.text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
