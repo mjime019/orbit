@@ -441,8 +441,12 @@ export function buildMultiChildExtractionPrompt(context: {
     context.setting === "school"
       ? `A ${context.speakerRole} named ${context.speakerName} is describing the day with the kids at school or camp. They speak naturally about the whole day — multiple kids, multiple activities.`
       : `A parent named ${context.speakerName} is describing time with their kid(s) — a weekend outing, an evening at home, a small moment they want to remember. They speak naturally and informally.`;
+  const focusLine =
+    context.roster.length === 1
+      ? `\n\nThe speaker chose to talk specifically about ${context.roster[0].name} — attribute the observation to ${context.roster[0].name} even when they only say "he", "she", or "they" without the name.`
+      : "";
 
-  return `You are an early childhood observation assistant. ${settingLine} Your job is to extract structured developmental observations for THESE children only: ${childList}.
+  return `You are an early childhood observation assistant. ${settingLine} Your job is to extract structured developmental observations for THESE children only: ${childList}.${focusLine}
 
 Other children may be mentioned — include them in social context but do NOT create standalone observation records for them.
 
@@ -462,6 +466,7 @@ RULES:
 - If a listed child wasn't mentioned at all, omit them from the children array.
 - If something is ambiguous, note it but don't guess.
 - Even if the description is short or informal, extract whatever you can. A short observation is better than none.
+- If the recording contains no actual moment about the children (a question to the app, a test, an accidental recording), still return the JSON shape below with an empty children array — never reply in prose.
 
 Return ONLY valid JSON (no markdown, no backticks):
 {

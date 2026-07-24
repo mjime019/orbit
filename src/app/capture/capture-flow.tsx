@@ -128,6 +128,13 @@ export function CaptureFlow({
   const [speakerName, setSpeakerName] = useState(
     ctx === "teacher" ? "Carla" : "Miguel"
   );
+  // Who this capture is about: one kid, or everyone (null). Scoping to one
+  // kid narrows the AI roster so "he built a tower" attributes correctly
+  // without saying the name.
+  const [selectedKidId, setSelectedKidId] = useState<string | null>(null);
+  const effectiveRoster = selectedKidId
+    ? roster.filter((r) => r.id === selectedKidId)
+    : roster;
   const [transcript, setTranscript] = useState("");
   const [extraction, setExtraction] = useState<Extraction | null>(null);
   const [cards, setCards] = useState<CardState[]>([]);
@@ -213,7 +220,7 @@ export function CaptureFlow({
       const saveRes = await gatedFetch("/api/capture/save", {
         id: captureIdRef.current ?? undefined,
         authorProfileId,
-        childIds: roster.map((r) => r.id),
+        childIds: effectiveRoster.map((r) => r.id),
         transcript,
         status: "draft",
       });
@@ -236,12 +243,21 @@ export function CaptureFlow({
         speakerName,
         speakerRole: ctx,
         setting: ctx === "teacher" ? "school" : "home",
-        roster,
+        roster: effectiveRoster,
       });
       const processData = await processRes.json();
       if (!processRes.ok || processData.error) {
         setError(
           `${processData.error || "Couldn't process the recording."} Your recording is saved — tap submit to retry.`
+        );
+        setStep("review");
+        return;
+      }
+      // Honest dead-end guard: the words saved, but there was no actual
+      // moment about the kids in them (a question, a test, a stray tap).
+      if ((processData.observations?.children ?? []).length === 0) {
+        setError(
+          `I couldn't find a moment about ${childNames} in that. Describe what happened — "${effectiveRoster[0]?.name ?? "he"} built a huge tower and said…" — then submit again.`
         );
         setStep("review");
         return;
@@ -255,7 +271,7 @@ export function CaptureFlow({
           transcript,
           observations: processData.observations,
           speakerName,
-          roster,
+          roster: effectiveRoster,
         });
         if (fuRes.ok) followupData = await fuRes.json();
       } catch {
@@ -384,7 +400,7 @@ export function CaptureFlow({
       await gatedFetch("/api/capture/save", {
         id: captureIdRef.current ?? undefined,
         authorProfileId,
-        childIds: roster.map((r) => r.id),
+        childIds: effectiveRoster.map((r) => r.id),
         transcript,
         followupTranscript: fullFollowup || null,
         structured: extraction,
@@ -403,7 +419,7 @@ export function CaptureFlow({
           speakerName,
           speakerRole: ctx,
           setting: ctx === "teacher" ? "school" : "home",
-          roster,
+          roster: effectiveRoster,
         });
         const data = await res.json();
         if (res.ok && data.observations) {
@@ -496,7 +512,7 @@ export function CaptureFlow({
   };
 
   const contextFlow = ctx === "teacher" ? SCHOOL_FLOW : HOME_FLOW;
-  const childNames = roster.map((r) => r.name).join(" & ");
+  const childNames = effectiveRoster.map((r) => r.name).join(" & ");
   const homeHref = ctx === "teacher" ? "/teacher" : "/parent";
 
   const recordingIndicator = (
@@ -591,6 +607,39 @@ export function CaptureFlow({
                 <p className="text-xs text-warm-gray mt-1">
                   Once children are added, capture works here.
                 </p>
+              </div>
+            )}
+
+            {ctx === "parent" && roster.length > 1 && (
+              <div className="mb-6">
+                <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-2 text-center">
+                  Who is this about?
+                </p>
+                <div className="flex flex-wrap gap-1.5 justify-center">
+                  <button
+                    onClick={() => setSelectedKidId(null)}
+                    className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                      selectedKidId === null
+                        ? "bg-espresso text-white"
+                        : "bg-white border border-sand-dark/50 text-warm-gray"
+                    }`}
+                  >
+                    Everyone
+                  </button>
+                  {roster.map((r) => (
+                    <button
+                      key={r.id}
+                      onClick={() => setSelectedKidId(r.id)}
+                      className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                        selectedKidId === r.id
+                          ? "bg-rust text-white"
+                          : "bg-white border border-sand-dark/50 text-warm-gray"
+                      }`}
+                    >
+                      {r.name}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 

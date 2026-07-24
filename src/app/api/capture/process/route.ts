@@ -44,9 +44,14 @@ export async function POST(req: NextRequest) {
 
     let result: string;
     try {
-      ({ text: result } = await callAI(systemPrompt, transcript, {
-        maxOutputTokens: 4000,
-      }));
+      // The transcript is DATA to process, not a message to the assistant —
+      // unwrapped, a dictated question ("how do I…") baits a conversational
+      // answer instead of extraction JSON.
+      ({ text: result } = await callAI(
+        systemPrompt,
+        `Recording transcript to process:\n"""\n${transcript}\n"""\n\nReturn the extraction JSON now.`,
+        { maxOutputTokens: 4000 }
+      ));
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "AI service unavailable";
@@ -55,10 +60,28 @@ export async function POST(req: NextRequest) {
     }
 
     let parsed: { children?: ExtractedChild[]; day_summary?: string; themes?: string[] };
+    const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start === -1 || end <= start) {
+      // Pure prose, no JSON at all: the extractor had nothing to extract
+      // (a question, a test, a stray recording). Not an error — retrying
+      // the same words can only fail the same way.
+      console.warn("[Capture Process] prose reply, treating as no-moment:", result.slice(0, 200));
+      return NextResponse.json({
+        observations: { children: [], day_summary: transcript.slice(0, 200), themes: [] },
+        unassigned: [],
+      });
+    }
     try {
-      const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      parsed = JSON.parse(cleaned);
+      // Slice the outermost {...} — the model sometimes wraps JSON in prose
+      // (every other AI route already parses this way).
+      parsed = JSON.parse(cleaned.slice(start, end + 1));
     } catch {
+      console.error(
+        "[Capture Process] unparseable AI response (first 300 chars):",
+        result.slice(0, 300)
+      );
       return NextResponse.json(
         { error: "AI returned an unreadable response. Your words are saved — try again." },
         { status: 502 }
