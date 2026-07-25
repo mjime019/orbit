@@ -5,6 +5,11 @@ import { getParentChildren } from "@/lib/queries";
 import { buildFileContext } from "@/lib/file-context";
 import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildPlannerPrompt, type PlannerKind } from "@/lib/prompts";
+import {
+  parseAIResponse,
+  AIResponseFormatError,
+  PlannerIdeasSchema,
+} from "@/lib/parse-ai";
 import { familyFormatDate, familySeasonLabel } from "@/lib/tz";
 
 const KINDS = new Set<PlannerKind>(["activity", "weekend", "extracurricular"]);
@@ -63,20 +68,17 @@ export async function POST(request: NextRequest) {
   let items: Record<string, unknown>[];
   try {
     const result = await callAI(prompt, "Generate the ideas now.", {
+      promptType: `planner_${kind}`,
       maxOutputTokens: 1800,
     });
-    const cleaned = result.text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const start = cleaned.indexOf("[");
-    const end = cleaned.lastIndexOf("]");
-    const parsed = JSON.parse(
-      start !== -1 && end > start ? cleaned.slice(start, end + 1) : cleaned
-    );
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      throw new Error("No ideas came back — try again.");
-    }
-    items = parsed;
+    items = parseAIResponse(result.text, PlannerIdeasSchema);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "AI service unavailable";
+    const message =
+      err instanceof AIResponseFormatError
+        ? "No ideas came back — try again."
+        : err instanceof Error
+          ? err.message
+          : "AI service unavailable";
     const status = err instanceof AIUnavailableError ? err.status : 502;
     return NextResponse.json({ error: message }, { status });
   }

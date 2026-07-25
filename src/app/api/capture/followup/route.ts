@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI } from "@/lib/ai";
 import { buildCaptureFollowupPrompt } from "@/lib/prompts";
+import { safeParseAIResponse, CaptureFollowupSchema } from "@/lib/parse-ai";
 
 interface RosterEntry {
   id: string;
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
     let result: string;
     try {
       ({ text: result } = await callAI(systemPrompt, userMessage, {
+        promptType: "capture_followup",
         maxOutputTokens: 2000,
       }));
     } catch {
@@ -55,21 +57,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ...fallbackFollowups(rosterList), degraded: true });
     }
 
-    let parsed;
-    try {
-      const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      parsed = JSON.parse(cleaned);
-    } catch {
-      parsed = fallbackFollowups(rosterList);
-    }
-
-    if (!parsed.followups || !Array.isArray(parsed.followups)) {
-      parsed = fallbackFollowups(rosterList);
-    }
-    if (!parsed.open_close) {
-      parsed.open_close =
-        "Anything else notable — new, exciting, or challenging — that we haven't covered?";
-    }
+    // Schema supplies the open_close default; any shape failure → fallback.
+    const parsed =
+      safeParseAIResponse(result, CaptureFollowupSchema) ??
+      fallbackFollowups(rosterList);
 
     return NextResponse.json(parsed);
   } catch (error) {

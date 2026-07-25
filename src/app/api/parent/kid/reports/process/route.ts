@@ -4,6 +4,12 @@ import { getSessionProfile } from "@/lib/session";
 import { getParentChildren } from "@/lib/queries";
 import { callAIWithDocument, AIUnavailableError } from "@/lib/ai";
 import { buildReportIngestionPrompt } from "@/lib/prompts";
+import {
+  parseAIResponse,
+  AIResponseFormatError,
+  ReportIngestionSchema,
+} from "@/lib/parse-ai";
+import type { z } from "zod";
 import { formatAge } from "@/lib/age";
 
 const EXT_MEDIA: Record<string, string> = {
@@ -65,13 +71,7 @@ export async function POST(request: NextRequest) {
   }
   const base64 = Buffer.from(await blob.arrayBuffer()).toString("base64");
 
-  let parsed: {
-    summary?: string;
-    strengths?: string[];
-    growth_areas?: string[];
-    notable_quotes?: string[];
-    suggested_file_updates?: Record<string, unknown>;
-  };
+  let parsed: z.output<typeof ReportIngestionSchema>;
   try {
     const result = await callAIWithDocument(
       buildReportIngestionPrompt({
@@ -81,30 +81,26 @@ export async function POST(request: NextRequest) {
       }),
       { base64, mediaType },
       `This is "${report.title}"${report.period_label ? ` (${report.period_label})` : ""}. Read it and return the JSON.`,
-      { maxOutputTokens: 1500 }
+      { promptType: "report_ingestion", maxOutputTokens: 1500 }
     );
-    const cleaned = result.text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-    parsed = JSON.parse(start !== -1 && end > start ? cleaned.slice(start, end + 1) : cleaned);
+    parsed = parseAIResponse(result.text, ReportIngestionSchema);
   } catch (err) {
+    if (err instanceof AIResponseFormatError) {
+      return NextResponse.json(
+        { error: "Orbit couldn't make sense of this report — try again." },
+        { status: err.status }
+      );
+    }
     const message = err instanceof Error ? err.message : "AI service unavailable";
     const status = err instanceof AIUnavailableError ? err.status : 502;
     return NextResponse.json({ error: message }, { status });
   }
 
-  if (!parsed.summary) {
-    return NextResponse.json(
-      { error: "Orbit couldn't make sense of this report — try again." },
-      { status: 502 }
-    );
-  }
-
   const extracted = {
-    strengths: parsed.strengths ?? [],
-    growth_areas: parsed.growth_areas ?? [],
-    notable_quotes: parsed.notable_quotes ?? [],
-    suggested_file_updates: parsed.suggested_file_updates ?? {},
+    strengths: parsed.strengths,
+    growth_areas: parsed.growth_areas,
+    notable_quotes: parsed.notable_quotes,
+    suggested_file_updates: parsed.suggested_file_updates,
   };
 
   const { error: updateError } = await sb

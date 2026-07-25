@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildMultiChildExtractionPrompt } from "@/lib/prompts";
+import {
+  parseAIResponse,
+  MultiChildExtractionSchema,
+} from "@/lib/parse-ai";
+import type { z } from "zod";
 
 interface RosterEntry {
   id: string;
@@ -8,16 +13,9 @@ interface RosterEntry {
   age: number | null;
 }
 
-interface ExtractedChild {
-  name?: string;
-  observation_summary?: string;
-  domains?: string[];
-  social_moments?: { type: string; description: string; with_whom: string[] }[];
-  direct_quotes?: string[];
-  other_kids_involved?: string[];
-  notable?: boolean;
-  notable_reason?: string | null;
-}
+type ExtractedChild = z.output<
+  typeof MultiChildExtractionSchema
+>["children"][number];
 
 // Multi-child extraction: the speaker talks once about the whole day/outing;
 // the AI splits it into per-child observations, which the server maps back to
@@ -45,6 +43,7 @@ export async function POST(req: NextRequest) {
     let result: string;
     try {
       ({ text: result } = await callAI(systemPrompt, transcript, {
+        promptType: "multi_child_extraction",
         maxOutputTokens: 4000,
       }));
     } catch (err) {
@@ -54,10 +53,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: message }, { status });
     }
 
-    let parsed: { children?: ExtractedChild[]; day_summary?: string; themes?: string[] };
+    let parsed: z.output<typeof MultiChildExtractionSchema>;
     try {
-      const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      parsed = JSON.parse(cleaned);
+      parsed = parseAIResponse(result, MultiChildExtractionSchema);
     } catch {
       return NextResponse.json(
         { error: "AI returned an unreadable response. Your words are saved — try again." },
@@ -71,20 +69,20 @@ export async function POST(req: NextRequest) {
     const children: (ExtractedChild & { child_id: string | null })[] = [];
     const unassigned: string[] = [];
 
-    for (const child of parsed.children ?? []) {
-      if (!child?.observation_summary) continue;
+    for (const child of parsed.children) {
+      if (!child.observation_summary) continue;
       const match = child.name
         ? byName.get(child.name.trim().toLowerCase())
         : undefined;
-      if (!match) unassigned.push(child.name ?? "Unnamed");
+      if (!match) unassigned.push(child.name || "Unnamed");
       children.push({ ...child, child_id: match?.id ?? null });
     }
 
     return NextResponse.json({
       observations: {
         children,
-        day_summary: parsed.day_summary ?? transcript.slice(0, 200),
-        themes: parsed.themes ?? [],
+        day_summary: parsed.day_summary || transcript.slice(0, 200),
+        themes: parsed.themes,
       },
       unassigned,
     });

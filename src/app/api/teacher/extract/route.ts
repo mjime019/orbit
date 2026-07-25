@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildObservationExtractionPrompt } from "@/lib/prompts";
+import { parseAIResponse, ObservationExtractionSchema } from "@/lib/parse-ai";
 import { createServerSupabase } from "@/lib/supabase-server";
 import type { ObservationExtraction } from "@/lib/types";
 
@@ -54,7 +55,9 @@ export async function POST(request: NextRequest) {
 
   let rawResponse: string;
   try {
-    ({ text: rawResponse } = await callAI(systemPrompt, note));
+    ({ text: rawResponse } = await callAI(systemPrompt, note, {
+      promptType: "observation_extraction",
+    }));
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "AI service unavailable";
@@ -62,14 +65,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status });
   }
 
-  // Parse JSON — the model sometimes wraps it in markdown code fences
   let extraction: ObservationExtraction;
   try {
-    const cleaned = rawResponse
-      .replace(/```json?\n?/g, "")
-      .replace(/```/g, "")
-      .trim();
-    extraction = JSON.parse(cleaned);
+    extraction = parseAIResponse(rawResponse, ObservationExtractionSchema);
   } catch {
     return NextResponse.json(
       { error: "Failed to parse AI response", raw: rawResponse },

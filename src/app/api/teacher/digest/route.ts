@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildDigestPrompt } from "@/lib/prompts";
+import { parseAIResponse, DigestGenerationSchema } from "@/lib/parse-ai";
 import { getChildContext } from "@/lib/queries";
 import { createServerSupabase } from "@/lib/supabase-server";
 import type { DigestGeneration } from "@/lib/types";
@@ -73,7 +74,9 @@ export async function POST(request: NextRequest) {
 
   let rawResponse: string;
   try {
-    ({ text: rawResponse } = await callAI(systemPrompt, userMessage));
+    ({ text: rawResponse } = await callAI(systemPrompt, userMessage, {
+      promptType: "digest",
+    }));
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "AI service unavailable";
@@ -83,11 +86,7 @@ export async function POST(request: NextRequest) {
 
   let generation: DigestGeneration;
   try {
-    const cleaned = rawResponse
-      .replace(/```json?\n?/g, "")
-      .replace(/```/g, "")
-      .trim();
-    generation = JSON.parse(cleaned);
+    generation = parseAIResponse(rawResponse, DigestGenerationSchema);
   } catch {
     return NextResponse.json(
       { error: "Failed to parse AI response", raw: rawResponse },

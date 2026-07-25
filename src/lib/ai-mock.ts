@@ -1,9 +1,10 @@
 /**
  * Mock AI response generator for local development (opt-in via AI_MODE=mock).
  *
- * Uses seed-data patterns as templates. The mock analyzes the user message
- * (which contains the teacher's note or observation JSON) to produce
- * context-aware responses — not random garbage.
+ * Routed by explicit PromptType — never by sniffing prompt text. Each branch
+ * analyzes the user message (teacher note, transcript, observation JSON) to
+ * produce context-aware responses — not random garbage. The contract tests
+ * verify every JSON branch parses through the same schema the routes use.
  */
 
 import type {
@@ -14,6 +15,7 @@ import type {
   DigestGeneration,
   OnboardingExtraction,
 } from "./types";
+import type { PromptType } from "./prompts";
 
 // ─── Keyword → Domain mapping ──────────────────────────────────
 const DOMAIN_KEYWORDS: Record<DevDomain, string[]> = {
@@ -231,8 +233,17 @@ function extractNames(text: string): string[] {
     "Emma",
     "Marcus",
     "Lily",
+    "Felipe",
+    "Rafael",
   ];
   return commonNames.filter((name) => text.includes(name));
+}
+
+function firstSentences(text: string, count: number): string {
+  const sentences = text.match(/[^.!?]+[.!?]+/g);
+  return sentences
+    ? sentences.slice(0, count).join(" ").trim()
+    : text.slice(0, 180).trim();
 }
 
 function extractChildName(systemPrompt: string): string {
@@ -587,63 +598,314 @@ function mockConciergeResponse(
   return `Thanks for reaching out, ${parentName}! Based on what we've been observing with ${childName} this week, things are going really well. ${childName} has been especially engaged during the creative activities and showing wonderful curiosity during group time.\n\nIs there anything specific you'd like to know more about? I'm happy to dig into the details of any particular area — social interactions, what ${childName}'s been learning, or ideas for extending the school experience at home.`;
 }
 
+// ─── Round 2/3 mock generators ──────────────────────────────────
+
+/** Family-mode chat: plain text grounded in the names from the prompt. */
+function mockFamilyChat(systemPrompt: string, parentMessage: string): string {
+  const match = systemPrompt.match(
+    /Orbit, (\w+)'s family concierge for their son (\w+)/
+  );
+  const parentName = match?.[1] ?? "there";
+  const childName = match?.[2] ?? "your kid";
+  const lower = parentMessage.toLowerCase();
+
+  if (lower.includes("bedtime") || lower.includes("sleep")) {
+    return `Rough bedtimes are so common at this age, ${parentName}. Based on what you've captured, ${childName} settles best when the wind-down is predictable — same order, same words, no surprises. Try moving the last screen or wild play 30 minutes earlier and keeping one small choice in his hands (which book, which pajamas).\n\nIf tonight goes sideways anyway, capture what happened — a few nights of notes usually shows the pattern.`;
+  }
+  if (lower.includes("weekend") || lower.includes("activit") || lower.includes("do today")) {
+    return `Based on ${childName}'s recent moments, I'd lean into whatever he's been building or pretending lately — give it more room rather than introducing something brand new. Keep it low-stakes and let him lead.\n\nWant me to put together a few concrete ideas in the planner?`;
+  }
+  return `Good question, ${parentName}. Going from what's in ${childName}'s file and the recent moments you've captured, things are trending well — he keeps coming back to the same interests, which is exactly how depth builds at this age.\n\nIs there a specific moment or worry behind the question? The more specific you get, the more useful I can be.`;
+}
+
+/** Multi-child capture extraction: split the transcript across the roster. */
+function mockMultiChildExtraction(systemPrompt: string, transcript: string) {
+  const rosterMatch = systemPrompt.match(/THESE children only: ([^\n]+?)\./);
+  const roster = (rosterMatch?.[1] ?? "")
+    .split(",")
+    .map((s) => s.replace(/\(age [^)]*\)/g, "").trim())
+    .filter(Boolean);
+
+  const sentences = transcript.match(/[^.!?]+[.!?]+/g) ?? [transcript];
+  const children = [];
+  for (const name of roster) {
+    const mentioned = sentences.filter((s) =>
+      s.toLowerCase().includes(name.toLowerCase())
+    );
+    if (mentioned.length === 0) continue;
+    const text = mentioned.slice(0, 3).join(" ").trim();
+    children.push({
+      name,
+      observation_summary: text,
+      domains: detectDomains(text),
+      social_moments: [],
+      direct_quotes: extractQuote(text) ? [extractQuote(text) as string] : [],
+      other_kids_involved: roster.filter(
+        (other) => other !== name && text.includes(other)
+      ),
+      notable: /first time|never|finally|breakthrough/i.test(text),
+      notable_reason: /first time|never|finally|breakthrough/i.test(text)
+        ? "Sounds like something new for him"
+        : null,
+    });
+  }
+  // Dev ergonomics: a transcript with no roster names shouldn't dead-end the
+  // review screen — attribute it to the first child so the flow stays alive.
+  if (children.length === 0 && roster.length > 0) {
+    children.push({
+      name: roster[0],
+      observation_summary: firstSentences(transcript, 2),
+      domains: detectDomains(transcript),
+      social_moments: [],
+      direct_quotes: [],
+      other_kids_involved: [],
+      notable: false,
+      notable_reason: null,
+    });
+  }
+
+  return {
+    children,
+    day_summary: firstSentences(transcript, 2),
+    themes: detectDomains(transcript).slice(0, 2),
+  };
+}
+
+/** Capture follow-up questions referencing the roster names. */
+function mockCaptureFollowup(systemPrompt: string) {
+  const namesMatch = systemPrompt.match(/richer details about ([^\n]+?)\.\n/);
+  const names = (namesMatch?.[1] ?? "")
+    .split(" and ")
+    .map((s) => s.replace(/\(age [^)]*\)/g, "").trim())
+    .filter(Boolean);
+
+  const followups = names.slice(0, 2).map((name) => ({
+    question: `You mentioned ${name} — was there a moment where he said or did something that surprised you?`,
+    about_child: name.toLowerCase(),
+    reason: "Surfacing specifics worth keeping",
+  }));
+  if (followups.length === 0) {
+    followups.push({
+      question: "Was there a specific moment today that stood out?",
+      about_child: "general",
+      reason: "Getting specific observations",
+    });
+  }
+  return {
+    followups,
+    open_close:
+      "Anything else notable — new, exciting, or challenging — that we haven't covered?",
+  };
+}
+
+/** "What this means" home-page summary: pulse + short narrative. */
+function mockWhatThisMeans(systemPrompt: string, observationsText: string) {
+  const childName =
+    systemPrompt.match(/observations about (\w+) \(/)?.[1] ?? "He";
+  const domains = detectDomains(observationsText);
+  const domainPhrase: Partial<Record<DevDomain, string>> = {
+    language: "finding bigger words for what he's doing",
+    motor_fine: "working with his hands on precise little projects",
+    motor_gross: "moving big — climbing, running, testing his body",
+    social_emotional: "navigating friendships and big feelings",
+    cognitive: "puzzling out how things work",
+    creative: "deep in pretend worlds of his own making",
+  };
+  const thread = domainPhrase[domains[0]] ?? "exploring on his own terms";
+  return {
+    pulse: `${childName}'s been ${thread} lately.`,
+    summary: `Across the recent moments, ${childName} keeps coming back to the same thread — ${thread}. That kind of repetition is how depth builds at this age, so giving it more room is the move right now.`,
+  };
+}
+
+/** A full journey chapter derived from the observation window. */
+function mockChapter(systemPrompt: string, observationsText: string) {
+  const childName =
+    systemPrompt.match(/chapter of (\w+)'s growth journey/)?.[1] ?? "he";
+  const period =
+    systemPrompt.match(/Chapter period: ([^\n]+)/)?.[1]?.trim() ?? "This season";
+  const ageLabel =
+    systemPrompt.match(/growth journey \(([^)]+?) old\)/)?.[1] ?? "";
+  const domains = detectDomains(observationsText);
+  const quote = extractQuote(observationsText);
+  const friends = extractNames(observationsText).filter((n) => n !== childName);
+
+  return {
+    period,
+    age_label: ageLabel,
+    title: `${childName} Finds His Groove`,
+    emoji: "🌱",
+    top_domains: domains.slice(0, 3),
+    summary: `This stretch was about ${childName} settling into his own rhythm. The same interests kept resurfacing and going deeper each time, and the moments his parents and teachers captured show him more willing to stick with hard things.${quote ? ` His own words tell it best: "${quote}".` : ""}`,
+    highlight_text: firstSentences(observationsText.replace(/^\[[^\]]*\]\s*(\([^)]*\)\s*)?/gm, ""), 1),
+    highlight_icon: "✨",
+    breakthrough_text: null,
+    breakthrough_icon: null,
+    emerging: domains.slice(0, 2).map((d) => `More confident ${d.replace("_", " ")} play`),
+    friends,
+    parent_note: `Keep capturing the small stuff — the pattern across these moments is where ${childName}'s story lives.`,
+  };
+}
+
+/** Planner mocks: one per kind, shaped exactly like the prompt contract. */
+function plannerAnchor(systemPrompt: string): string {
+  const match = systemPrompt.match(/interests?:?\s*([^\n]+)/i);
+  const first = match?.[1]?.split(",")[0]?.trim();
+  return first && first.length < 60 ? first.toLowerCase() : "building things";
+}
+
+function mockPlannerActivity(systemPrompt: string) {
+  const childName =
+    systemPrompt.match(/at-home activities for (\w+)/)?.[1] ?? "him";
+  const anchor = plannerAnchor(systemPrompt);
+  return [
+    {
+      title: "Cardboard construction site",
+      why_it_fits: `Because ${childName}'s been into ${anchor}, a pile of boxes and tape gives that same drive a bigger canvas.`,
+      materials: ["cardboard boxes", "painter's tape", "markers"],
+      time_minutes: 30,
+      energy: "medium",
+      domains: ["motor_fine", "creative"],
+    },
+    {
+      title: "Kitchen helper night",
+      why_it_fits: `${childName} gets real jobs with real stakes — pouring and measuring feed the same focus he's been showing.`,
+      materials: ["measuring cups", "a simple recipe"],
+      time_minutes: 25,
+      energy: "calm",
+      domains: ["cognitive", "motor_fine"],
+    },
+    {
+      title: "Flashlight story cave",
+      why_it_fits: `A blanket fort plus a flashlight turns wind-down time into story time on ${childName}'s terms.`,
+      materials: ["blankets", "flashlight", "favorite books"],
+      time_minutes: 20,
+      energy: "calm",
+      domains: ["language", "creative"],
+    },
+    {
+      title: "Backyard obstacle course",
+      why_it_fits: `Big-body play that ${childName} can redesign himself each round — he sets the rules, he runs it.`,
+      materials: ["pillows", "chairs", "a timer"],
+      time_minutes: 30,
+      energy: "wild",
+      domains: ["motor_gross", "cognitive"],
+    },
+  ];
+}
+
+function mockPlannerWeekend() {
+  return [
+    {
+      title: "Morning at the bay park",
+      where: "A shaded waterfront park",
+      why_it_works_for_the_crew: "The big boys can run the open field while the baby gets stroller shade — everyone's outside, nobody's melting.",
+      timing_tip: "Go right after breakfast, home before the midday heat and nap window.",
+      backup_if_rains: "Children's museum early, before the rainy-day crowd arrives.",
+    },
+    {
+      title: "Library + splash pad combo",
+      where: "Neighborhood library, then the nearest splash pad",
+      why_it_works_for_the_crew: "Story time settles everyone, then the splash pad burns the wiggles — the baby watches from shade.",
+      timing_tip: "Library first while everyone's fresh; splash pad crowds thin before noon.",
+      backup_if_rains: "Stay for the library's craft corner and call it a win.",
+    },
+    {
+      title: "Farmers market snack tour",
+      where: "A weekend farmers market",
+      why_it_works_for_the_crew: "Each boy picks one snack — a mission for the big kids, sights and sounds for the baby, groceries for you.",
+      timing_tip: "Arrive at opening; stroller lanes are clear for the first hour.",
+      backup_if_rains: "Grocery-store snack tour with the same one-pick-each rule.",
+    },
+  ];
+}
+
+function mockPlannerExtracurricular(systemPrompt: string) {
+  const childName =
+    systemPrompt.match(/worth exploring for (\w+)/)?.[1] ?? "him";
+  return [
+    {
+      category: "Swim lessons",
+      why_now: `At his age, water confidence is the highest-value skill there is — and ${childName}'s comfort with new challenges suggests he's ready.`,
+      readiness_signs: ["Comfortable getting his face wet", "Follows two-step instructions"],
+      questions_to_ask_providers: [
+        "What's the instructor-to-kid ratio in the water?",
+        "How do you handle a kid who's hesitant that day?",
+      ],
+      try_before_committing: "One drop-in family swim session before signing up for a series.",
+    },
+    {
+      category: "Intro soccer",
+      why_now: `${childName}'s big-body energy and interest in games with rules point at low-key team play.`,
+      readiness_signs: ["Runs and kicks with control", "Handles taking turns"],
+      questions_to_ask_providers: [
+        "Is it skills-and-fun or competitive at this age?",
+        "What happens when a kid wanders off mid-drill?",
+      ],
+      try_before_committing: "A free trial class or just a pickup kickaround at the park with friends.",
+    },
+  ];
+}
+
+/** Report ingestion: parent-language reading of an uploaded school report. */
+function mockReportIngestion(systemPrompt: string, userMessage: string) {
+  const childName = systemPrompt.match(/about their son (\w+)/)?.[1] ?? "him";
+  const title = userMessage.match(/This is "([^"]+)"/)?.[1] ?? "the report";
+  return {
+    summary: `${title} paints ${childName} as engaged and well-settled (mock reading — AI_MODE=mock). His teachers describe steady focus during hands-on work and warm connections with classmates.`,
+    strengths: ["Sustained focus on hands-on projects", "Kind with classmates"],
+    growth_areas: ["Practicing patience during transitions"],
+    notable_quotes: [],
+    suggested_file_updates: {
+      school_notes: `Per ${title}: settled in well, engaged during hands-on work.`,
+    },
+  };
+}
+
 // ─── Public API ─────────────────────────────────────────────────
 
 /**
- * Generate a mock AI response based on the system prompt type.
- * Detects which prompt template is being used and returns the
- * appropriate JSON structure.
+ * Generate a mock AI response for an explicit prompt type. The exhaustive
+ * switch means adding a PromptType without a mock branch is a compile error.
  */
 export function generateMockResponse(
+  promptType: PromptType,
   systemPrompt: string,
   userMessage: string
 ): string {
-  // Detect which AI use case based on prompt content
-  if (
-    systemPrompt.includes("observation assistant") ||
-    systemPrompt.includes("extract structured developmental")
-  ) {
-    return JSON.stringify(mockExtraction(userMessage));
+  switch (promptType) {
+    case "observation_extraction":
+      return JSON.stringify(mockExtraction(userMessage));
+    case "highlight":
+      return JSON.stringify(mockHighlight(systemPrompt, userMessage));
+    case "digest":
+      return JSON.stringify(mockDigest(systemPrompt, userMessage));
+    case "onboarding_extraction":
+      return JSON.stringify(mockOnboardingExtraction(systemPrompt, userMessage));
+    case "activity_personalization":
+      // Plain text, not JSON
+      return mockActivityPersonalization(systemPrompt, userMessage);
+    case "concierge_chat":
+      // Plain text, not JSON
+      return mockConciergeResponse(systemPrompt, userMessage);
+    case "family_chat":
+      // Plain text, not JSON
+      return mockFamilyChat(systemPrompt, userMessage);
+    case "multi_child_extraction":
+      return JSON.stringify(mockMultiChildExtraction(systemPrompt, userMessage));
+    case "capture_followup":
+      return JSON.stringify(mockCaptureFollowup(systemPrompt));
+    case "what_this_means":
+      return JSON.stringify(mockWhatThisMeans(systemPrompt, userMessage));
+    case "chapter":
+      return JSON.stringify(mockChapter(systemPrompt, userMessage));
+    case "planner_activity":
+      return JSON.stringify(mockPlannerActivity(systemPrompt));
+    case "planner_weekend":
+      return JSON.stringify(mockPlannerWeekend());
+    case "planner_extracurricular":
+      return JSON.stringify(mockPlannerExtracurricular(systemPrompt));
+    case "report_ingestion":
+      return JSON.stringify(mockReportIngestion(systemPrompt, userMessage));
   }
-
-  if (
-    systemPrompt.includes("highlight for parents") ||
-    systemPrompt.includes("writing a highlight")
-  ) {
-    return JSON.stringify(mockHighlight(systemPrompt, userMessage));
-  }
-
-  if (
-    systemPrompt.includes("weekly digest") ||
-    systemPrompt.includes("writing a weekly digest")
-  ) {
-    return JSON.stringify(mockDigest(systemPrompt, userMessage));
-  }
-
-  if (
-    systemPrompt.includes("onboarding intake") ||
-    systemPrompt.includes("Orbit onboarding")
-  ) {
-    return JSON.stringify(mockOnboardingExtraction(systemPrompt, userMessage));
-  }
-
-  if (
-    systemPrompt.includes("Why It Fits") ||
-    systemPrompt.includes("why it fits")
-  ) {
-    // Activity personalization returns plain text, not JSON
-    return mockActivityPersonalization(systemPrompt, userMessage);
-  }
-
-  if (
-    systemPrompt.includes("Orbit concierge") ||
-    systemPrompt.includes("navigate early childhood")
-  ) {
-    // Concierge returns plain text, not JSON
-    return mockConciergeResponse(systemPrompt, userMessage);
-  }
-
-  // Fallback: return the extraction mock (safest default)
-  console.warn("[AI Mock] Unknown prompt type, falling back to extraction mock");
-  return JSON.stringify(mockExtraction(userMessage));
 }

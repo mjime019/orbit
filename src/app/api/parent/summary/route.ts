@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildWhatThisMeansPrompt } from "@/lib/prompts";
+import { safeParseAIResponse, WhatThisMeansSchema } from "@/lib/parse-ai";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { getChildContext } from "@/lib/queries";
 import { buildFileContext } from "@/lib/file-context";
@@ -109,16 +110,19 @@ export async function POST(request: NextRequest) {
       fileContext
         ? `${fileContext}\n\nOBSERVATIONS:\n${obsText}`
         : obsText,
-      { maxOutputTokens: 500 }
+      { promptType: "what_this_means", maxOutputTokens: 500 }
     );
-    const cleaned = result.text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    try {
-      const parsed = JSON.parse(cleaned);
-      content = (parsed.summary ?? "").trim();
-      pulse = (parsed.pulse ?? "").trim() || null;
-    } catch {
+    const parsed = safeParseAIResponse(result.text, WhatThisMeansSchema);
+    if (parsed) {
+      content = parsed.summary.trim();
+      pulse = parsed.pulse.trim() || null;
+    } else {
       // Model ignored the JSON shape — use the text as the summary, no pulse.
-      content = cleaned.replace(/^["']|["']$/g, "").trim();
+      content = result.text
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "")
+        .replace(/^["']|["']$/g, "")
+        .trim();
     }
     if (!content) throw new AIUnavailableError("AI returned an empty summary.");
   } catch (err) {
