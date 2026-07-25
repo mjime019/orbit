@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildMultiChildExtractionPrompt } from "@/lib/prompts";
+import {
+  parseAIResponse,
+  AIResponseFormatError,
+  MultiChildExtractionSchema,
+} from "@/lib/parse-ai";
+import type { z } from "zod";
 
 interface RosterEntry {
   id: string;
@@ -8,16 +14,9 @@ interface RosterEntry {
   age: number | null;
 }
 
-interface ExtractedChild {
-  name?: string;
-  observation_summary?: string;
-  domains?: string[];
-  social_moments?: { type: string; description: string; with_whom: string[] }[];
-  direct_quotes?: string[];
-  other_kids_involved?: string[];
-  notable?: boolean;
-  notable_reason?: string | null;
-}
+type ExtractedChild = z.output<
+  typeof MultiChildExtractionSchema
+>["children"][number];
 
 // Multi-child extraction: the speaker talks once about the whole day/outing;
 // the AI splits it into per-child observations, which the server maps back to
@@ -50,7 +49,7 @@ export async function POST(req: NextRequest) {
       ({ text: result } = await callAI(
         systemPrompt,
         `Recording transcript to process:\n"""\n${transcript}\n"""\n\nReturn the extraction JSON now.`,
-        { maxOutputTokens: 4000 }
+        { promptType: "multi_child_extraction", maxOutputTokens: 4000 }
       ));
     } catch (err) {
       const message =
@@ -59,25 +58,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: message }, { status });
     }
 
-    let parsed: { children?: ExtractedChild[]; day_summary?: string; themes?: string[] };
-    const cleaned = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-    if (start === -1 || end <= start) {
-      // Pure prose, no JSON at all: the extractor had nothing to extract
-      // (a question, a test, a stray recording). Not an error — retrying
-      // the same words can only fail the same way.
-      console.warn("[Capture Process] prose reply, treating as no-moment:", result.slice(0, 200));
-      return NextResponse.json({
-        observations: { children: [], day_summary: transcript.slice(0, 200), themes: [] },
-        unassigned: [],
-      });
-    }
+    let parsed: z.output<typeof MultiChildExtractionSchema>;
     try {
-      // Slice the outermost {...} — the model sometimes wraps JSON in prose
-      // (every other AI route already parses this way).
-      parsed = JSON.parse(cleaned.slice(start, end + 1));
-    } catch {
+      parsed = parseAIResponse(result, MultiChildExtractionSchema);
+    } catch (err) {
+      if (err instanceof AIResponseFormatError && !err.raw.includes("{")) {
+        // Pure prose, no JSON at all: the extractor had nothing to extract
+        // (a question, a test, a stray recording). Not an error — retrying
+        // the same words can only fail the same way.
+        console.warn(
+          "[Capture Process] prose reply, treating as no-moment:",
+          result.slice(0, 200)
+        );
+        return NextResponse.json({
+          observations: { children: [], day_summary: transcript.slice(0, 200), themes: [] },
+          unassigned: [],
+        });
+      }
       console.error(
         "[Capture Process] unparseable AI response (first 300 chars):",
         result.slice(0, 300)
@@ -94,20 +91,20 @@ export async function POST(req: NextRequest) {
     const children: (ExtractedChild & { child_id: string | null })[] = [];
     const unassigned: string[] = [];
 
-    for (const child of parsed.children ?? []) {
-      if (!child?.observation_summary) continue;
+    for (const child of parsed.children) {
+      if (!child.observation_summary) continue;
       const match = child.name
         ? byName.get(child.name.trim().toLowerCase())
         : undefined;
-      if (!match) unassigned.push(child.name ?? "Unnamed");
+      if (!match) unassigned.push(child.name || "Unnamed");
       children.push({ ...child, child_id: match?.id ?? null });
     }
 
     return NextResponse.json({
       observations: {
         children,
-        day_summary: parsed.day_summary ?? transcript.slice(0, 200),
-        themes: parsed.themes ?? [],
+        day_summary: parsed.day_summary || transcript.slice(0, 200),
+        themes: parsed.themes,
       },
       unassigned,
     });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildOnboardingExtractionPrompt } from "@/lib/prompts";
+import { parseAIResponse, OnboardingExtractionSchema } from "@/lib/parse-ai";
 import { createServerSupabase } from "@/lib/supabase-server";
 import type { OnboardingExtraction } from "@/lib/types";
 import { formatAge } from "@/lib/age";
@@ -33,7 +34,9 @@ export async function POST(request: NextRequest) {
 
   let rawResponse: string;
   try {
-    ({ text: rawResponse } = await callAI(systemPrompt, response));
+    ({ text: rawResponse } = await callAI(systemPrompt, response, {
+      promptType: "onboarding_extraction",
+    }));
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "AI service unavailable";
@@ -41,19 +44,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status });
   }
 
-  // Parse JSON response — tolerate fences and prose preambles by taking the
-  // outermost {...} block.
   let extraction: OnboardingExtraction;
   try {
-    const cleaned = rawResponse
-      .replace(/```json?\n?/g, "")
-      .replace(/```/g, "")
-      .trim();
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-    const jsonBlock =
-      start !== -1 && end > start ? cleaned.slice(start, end + 1) : cleaned;
-    extraction = JSON.parse(jsonBlock);
+    extraction = parseAIResponse(rawResponse, OnboardingExtractionSchema);
   } catch {
     return NextResponse.json(
       { error: "Couldn't structure that answer — try once more.", raw: rawResponse },

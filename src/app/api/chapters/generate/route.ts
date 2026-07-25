@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildChapterPrompt } from "@/lib/prompts";
+import {
+  parseAIResponse,
+  AIResponseFormatError,
+  ChapterGenerationSchema,
+} from "@/lib/parse-ai";
+import type { z } from "zod";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { getLatestJourneyChapter } from "@/lib/queries";
 import { buildFileContext } from "@/lib/file-context";
 import { ageBand, formatAge } from "@/lib/age";
 import { familyFormatDate, familySeasonLabel } from "@/lib/tz";
 
-const VALID_DOMAINS = new Set([
-  "language", "motor_fine", "motor_gross", "social_emotional", "cognitive", "creative",
-]);
 const MIN_NEW_OBSERVATIONS = 3;
 
 // "Write the next chapter": distills the observations since the last chapter
@@ -75,7 +78,7 @@ export async function POST(request: NextRequest) {
     )
     .join("\n");
 
-  let parsed: Record<string, unknown>;
+  let parsed: z.output<typeof ChapterGenerationSchema>;
   try {
     const result = await callAI(
       buildChapterPrompt({
@@ -88,44 +91,38 @@ export async function POST(request: NextRequest) {
       fileContext
         ? `${fileContext}\n\nOBSERVATIONS SINCE THE LAST CHAPTER:\n${obsText}`
         : obsText,
-      { maxOutputTokens: 1200 }
+      { promptType: "chapter", maxOutputTokens: 1200 }
     );
-    const cleaned = result.text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-    parsed = JSON.parse(start !== -1 && end > start ? cleaned.slice(start, end + 1) : cleaned);
+    parsed = parseAIResponse(result.text, ChapterGenerationSchema);
   } catch (err) {
+    if (err instanceof AIResponseFormatError) {
+      return NextResponse.json(
+        { error: "The chapter came back incomplete — try again." },
+        { status: err.status }
+      );
+    }
     const message = err instanceof Error ? err.message : "AI service unavailable";
     const status = err instanceof AIUnavailableError ? err.status : 503;
     return NextResponse.json({ error: message }, { status });
   }
 
-  if (!parsed.title || !parsed.summary) {
-    return NextResponse.json(
-      { error: "The chapter came back incomplete — try again." },
-      { status: 502 }
-    );
-  }
-
   const row = {
     child_id: childId,
-    period: String(parsed.period ?? familySeasonLabel()),
-    age_label: String(parsed.age_label ?? formatAge(child.date_of_birth)),
-    title: String(parsed.title),
-    emoji: String(parsed.emoji ?? "🌱"),
+    period: parsed.period || familySeasonLabel(),
+    age_label: parsed.age_label || formatAge(child.date_of_birth),
+    title: parsed.title,
+    emoji: parsed.emoji || "🌱",
     is_current: true,
     observation_count: count,
-    top_domains: (Array.isArray(parsed.top_domains) ? parsed.top_domains : [])
-      .filter((d) => VALID_DOMAINS.has(String(d)))
-      .slice(0, 3),
-    summary: String(parsed.summary),
-    highlight_text: parsed.highlight_text ? String(parsed.highlight_text) : null,
-    highlight_icon: parsed.highlight_icon ? String(parsed.highlight_icon) : null,
-    breakthrough_text: parsed.breakthrough_text ? String(parsed.breakthrough_text) : null,
-    breakthrough_icon: parsed.breakthrough_icon ? String(parsed.breakthrough_icon) : null,
-    emerging: Array.isArray(parsed.emerging) ? parsed.emerging.map(String) : [],
-    friends: Array.isArray(parsed.friends) ? parsed.friends.map(String) : [],
-    parent_note: parsed.parent_note ? String(parsed.parent_note) : null,
+    top_domains: parsed.top_domains.slice(0, 3),
+    summary: parsed.summary,
+    highlight_text: parsed.highlight_text || null,
+    highlight_icon: parsed.highlight_icon || null,
+    breakthrough_text: parsed.breakthrough_text || null,
+    breakthrough_icon: parsed.breakthrough_icon || null,
+    emerging: parsed.emerging,
+    friends: parsed.friends,
+    parent_note: parsed.parent_note || null,
   };
 
   const { data: inserted, error: insertError } = await sb

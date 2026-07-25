@@ -1,3 +1,24 @@
+// Every callAI call names its prompt type explicitly. The mock routes on
+// this (never by sniffing prompt text), and it keeps the prompt builder,
+// the mock, and the response schema for a use case in lockstep — the
+// contract tests in ai-mock.test.ts enforce the triangle.
+export type PromptType =
+  | "observation_extraction"
+  | "highlight"
+  | "digest"
+  | "onboarding_extraction"
+  | "activity_personalization" // dormant demo path
+  | "concierge_chat" // dormant demo path
+  | "family_chat"
+  | "multi_child_extraction"
+  | "capture_followup"
+  | "what_this_means"
+  | "chapter"
+  | "planner_activity"
+  | "planner_weekend"
+  | "planner_extracurricular"
+  | "report_ingestion";
+
 export function buildObservationExtractionPrompt(context: {
   schoolName: string;
   childName: string;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAI, AIUnavailableError } from "@/lib/ai";
 import { buildHighlightPrompt } from "@/lib/prompts";
+import { parseAIResponse, HighlightGenerationSchema } from "@/lib/parse-ai";
 import { getChildContext } from "@/lib/queries";
 import { createServerSupabase } from "@/lib/supabase-server";
 import type { HighlightGeneration } from "@/lib/types";
@@ -31,6 +32,9 @@ export async function POST(request: NextRequest) {
       .from("observations")
       .select("*")
       .in("id", observationIds)
+      // Scope to the child: ids from another child's feed must not leak
+      // into this highlight (DD audit finding 5).
+      .eq("child_id", childId)
       .order("created_at", { ascending: true }),
   ]);
 
@@ -60,7 +64,9 @@ export async function POST(request: NextRequest) {
 
   let rawResponse: string;
   try {
-    ({ text: rawResponse } = await callAI(systemPrompt, userMessage));
+    ({ text: rawResponse } = await callAI(systemPrompt, userMessage, {
+      promptType: "highlight",
+    }));
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "AI service unavailable";
@@ -70,11 +76,7 @@ export async function POST(request: NextRequest) {
 
   let generation: HighlightGeneration;
   try {
-    const cleaned = rawResponse
-      .replace(/```json?\n?/g, "")
-      .replace(/```/g, "")
-      .trim();
-    generation = JSON.parse(cleaned);
+    generation = parseAIResponse(rawResponse, HighlightGenerationSchema);
   } catch {
     return NextResponse.json(
       { error: "Failed to parse AI response", raw: rawResponse },

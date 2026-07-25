@@ -28,15 +28,15 @@ Key judgment call: ROADMAP.md's "Phase 1–3 COMPLETE ✅" was scored against ac
 2. **Deploy drift.** This repo has 4 commits; the working tree has 14 modified files plus the **entire untracked camp module** (`src/app/camp/`, `src/app/api/camp/`). Production runs the old Gemini-or-mock `ai.ts`; the working tree's `ai.ts` is Anthropic `claude-haiku-4-5` primary → Gemini fallback → mock. Nothing the camp teacher uses is reproducible from git.
 3. **Silent fabrication.** *(FIXED Jul 8, 2026 — see Changelog.)* `callAI` could never throw — mock was the unconditional last tier — so route-level error handling was dead code and quota exhaustion silently served invented child-specific anecdotes.
 4. **Onboarding data loss ×2.** `src/app/api/parent/onboarding/complete/route.ts` builds `extraData` (sensitivities, routines, family) and never writes it; its `onboarding_responses` insert omits the NOT NULL `parent_id` and ignores the error — raw answers likely never persist.
-5. **Cross-child leak.** `src/app/api/teacher/highlight/route.ts` fetches observations by id with no `child_id` check.
+5. **Cross-child leak.** *(FIXED Jul 25, 2026 — see Changelog.)* `src/app/api/teacher/highlight/route.ts` fetches observations by id with no `child_id` check.
 6. **Guardrails are prompt-text only.** No sanitization/output validation anywhere; concierge output reaches parents unreviewed; chat history and AI-extracted profile fields are interpolated into the *system* prompt (injection replay).
-7. **Broken mock routing.** `ai-mock.ts` routes by case-sensitive substring of the system prompt; `WRITE A "WHY IT FITS" BLURB` (prompts.ts:199) matches nothing → activity personalization in mock mode returns a raw JSON blob as parent-facing copy.
+7. **Broken mock routing.** *(FIXED Jul 25, 2026 — explicit promptType, see Changelog.)* `ai-mock.ts` routes by case-sensitive substring of the system prompt; `WRITE A "WHY IT FITS" BLURB` (prompts.ts:199) matches nothing → activity personalization in mock mode returns a raw JSON blob as parent-facing copy.
 
 ## Current state
 
 - **Wired end-to-end:** Observation Capture, Content Engine (highlights + digests, teacher-approved), Highlights feed, Concierge Chat (unreviewed output), Onboarding (lossy — finding 4), Camp pilot (off-schema table).
 - **Read-only seed renders, no engine:** Weekends, Extracurriculars, Transition, Growth Journey. Activities half-wired (AI `why_it_fits` blurbs only; no matching engine).
-- **Not built:** auth/login/landing, journey generation, weekend scoring, activity matching, tests (zero), migrations.
+- **Not built:** auth/login/landing, journey generation, weekend scoring, activity matching, tests *(first vitest suites landed Jul 25, 2026)*, migrations.
 - **Small live bugs:** *(all FIXED Jul 8, 2026 — see Changelog)* `getUpcomingCalendarEvents` showed past events, `getTodayObservationCount` ignored its classroom param (both `src/lib/queries.ts`); chat prompt duplicated the just-sent parent message (`api/parent/chat/route.ts`).
 
 ## Remaining work, sequenced by dependency
@@ -44,10 +44,10 @@ Key judgment call: ROADMAP.md's "Phase 1–3 COMPLETE ✅" was scored against ac
 0. Verify key/RLS situation (finding 1) — blocks all trust claims.
 1. Commit & push the working tree (owner decision — push deploys): camp module, Anthropic `ai.ts`, 14 modified files.
 2. Schema truth: add `camp_observations` to `../software/architecture/supabase-schema.sql`; adopt real migrations (`supabase/` dir).
-3. Trust layer (top-10 list in 02-code-quality.md, items 1–5, auth-independent): expose mock/fallback tier in `callAI`'s return; shared zod-validated `parseAIResponse`; fix onboarding persistence; scope highlight observations to child; explicit promptType instead of prompt-sniffing mock routing.
+3. Trust layer (top-10 list in 02-code-quality.md, items 1–5, auth-independent): expose mock/fallback tier in `callAI`'s return *(done Jul 8)*; shared zod-validated `parseAIResponse` *(done Jul 25)*; fix onboarding persistence *(rebuilt Jul 17–23)*; scope highlight observations to child *(done Jul 25)*; explicit promptType instead of prompt-sniffing mock routing *(done Jul 25)*.
 4. Auth: Supabase Auth + roles; replace `DEMO_*` UUIDs (queries.ts, observe route, both approve routes, chat route); `@supabase/ssr` in `supabase-server.ts`; move `content-engine.tsx`'s browser-side DB reads behind the server.
 5. Guardrails + injection hardening (top-10 items 6–7): history as real API message turns; banned-lexicon check on unreviewed surfaces.
-6. Tests (nothing installed; pick vitest): prompts↔mock contract + parse/validate paths first.
+6. Tests (nothing installed; pick vitest): prompts↔mock contract + parse/validate paths first. *(STARTED Jul 25, 2026 — vitest installed, both suites exist; see Changelog.)*
 7. Product engines: activity matching, weekend scoring, journey generation.
 
 ## Non-obvious gotchas
@@ -66,6 +66,31 @@ Key judgment call: ROADMAP.md's "Phase 1–3 COMPLETE ✅" was scored against ac
 - Verifying AI failure UX locally: run with `ANTHROPIC_API_KEY="" npm run dev` — flows show errors, never mock content. `AI_MODE=mock` opts into the mock explicitly.
 
 ## Changelog
+
+- **Jul 25, 2026 — AI trust layer + first tests.** `src/lib/parse-ai.ts`
+  is now the ONE place AI text becomes trusted data: `parseAIResponse`
+  (fence/prose stripping + a zod schema per response shape; throws
+  `AIResponseFormatError`, status 502) and `safeParseAIResponse` for the
+  two routes with their own fallback (capture followup, summary). All 10
+  JSON routes converted — load-bearing fields are required (a highlight
+  without content now 502s instead of inserting), decorative fields
+  collapse to safe defaults, unknown enum members are dropped, and no
+  route hand-rolls `JSON.parse` anymore. `callAI` and `callAIWithDocument`
+  now REQUIRE `options.promptType`; the mock routes on it via an
+  exhaustive switch (a new `PromptType` without a mock branch is a compile
+  error) and prompt-text sniffing is gone. The mock gained real branches
+  for every Round 2/3 type — multi-child capture, followups, chapters,
+  what-this-means, all three planners, family chat, report ingestion — so
+  `AI_MODE=mock` exercises the current app instead of falling back to the
+  observation-extraction mock. Also fixed audit finding 5: the highlight
+  route scopes its observation fetch to `child_id`. **Tests exist now:**
+  vitest (`npm test`), 32 tests across `src/lib/__tests__/` —
+  parse/validate paths plus a prompts↔mock↔schema contract suite typed
+  `Record<PromptType, Case>` so coverage of every prompt type is
+  compiler-enforced. New deps: `zod` (runtime), `vitest` (dev). Note:
+  `npm run build` in an env without Supabase vars fails at prerender
+  (`/parent/growth`) — pre-existing, not from this change; `tsc`, eslint,
+  and the test suite are the local gates.
 
 - **Jul 23, 2026 — Round 3 (main).** Requires `scripts/pivot/08-round3.sql`
   run once (idempotent; code degrades warn-only without it). **tz:**

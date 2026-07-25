@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { generateMockResponse } from "./ai-mock";
+import type { PromptType } from "./prompts";
 
 // Claude Haiku 4.5 — the only AI provider. (The former Google fallback was
 // removed Jul 2026: its model had been retired, and the fallback transmitted
@@ -19,6 +20,12 @@ export interface AIResult {
   source: "anthropic" | "mock";
 }
 
+export interface CallAIOptions {
+  /** Which prompt this is — the mock routes on it, never on prompt text. */
+  promptType: PromptType;
+  maxOutputTokens?: number;
+}
+
 export class AIUnavailableError extends Error {
   readonly rateLimited: boolean;
   /** Suggested HTTP status for routes surfacing this error. */
@@ -35,11 +42,11 @@ export class AIUnavailableError extends Error {
 export async function callAI(
   systemPrompt: string,
   userMessage: string,
-  options?: { maxOutputTokens?: number }
+  options: CallAIOptions
 ): Promise<AIResult> {
   if (mockMode) {
     return {
-      text: generateMockResponse(systemPrompt, userMessage),
+      text: generateMockResponse(options.promptType, systemPrompt, userMessage),
       source: "mock",
     };
   }
@@ -73,18 +80,16 @@ export async function callAI(
 export async function callAIWithDocument(
   systemPrompt: string,
   doc: { base64: string; mediaType: string },
-  userMessage?: string,
-  options?: { maxOutputTokens?: number }
+  userMessage: string | undefined,
+  options: CallAIOptions
 ): Promise<AIResult> {
   if (mockMode) {
     return {
-      text: JSON.stringify({
-        summary: "Mock report summary (AI_MODE=mock).",
-        strengths: ["Mock strength"],
-        growth_areas: ["Mock growth area"],
-        notable_quotes: [],
-        suggested_file_updates: {},
-      }),
+      text: generateMockResponse(
+        options.promptType,
+        systemPrompt,
+        userMessage ?? ""
+      ),
       source: "mock",
     };
   }

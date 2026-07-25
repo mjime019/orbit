@@ -94,7 +94,9 @@ export async function POST(request: NextRequest) {
 
   let aiResponse: string;
   try {
-    ({ text: aiResponse } = await callAI(systemPrompt, message));
+    ({ text: aiResponse } = await callAI(systemPrompt, message, {
+      promptType: "family_chat",
+    }));
     // Strip any wrapping quotes
     aiResponse = aiResponse.replace(/^["']|["']$/g, "").trim();
   } catch (err) {
