@@ -234,17 +234,21 @@ export async function getChildContext(childId: string) {
     "load child"
   );
 
+  // Kids without a classroom (the boys, since the round-3 hygiene) skip the
+  // lookup — querying uuid = "" is a Postgres error, not an empty result.
   const [profileRes, classroomRes] = await Promise.all([
     sb
       .from("child_profiles")
       .select("interests, parent_goals")
       .eq("child_id", childId)
       .maybeSingle(),
-    sb
-      .from("classrooms")
-      .select("name, lesson_theme")
-      .eq("id", child?.classroom_id ?? "")
-      .maybeSingle(),
+    child?.classroom_id
+      ? sb
+          .from("classrooms")
+          .select("name, lesson_theme")
+          .eq("id", child.classroom_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
   const profile = must(profileRes, "load child profile");
   const classroom = must(classroomRes, "load classroom");
@@ -465,11 +469,23 @@ export async function getChildSummary(childId: string) {
 export interface HomeKidRow {
   child: { id: string; name: string; date_of_birth: string | null };
   pulse: string | null;
+  // First sentence of the file's temperament — evergreen, shown when the
+  // pulse would be stale news.
+  identityLine: string | null;
+  // Days since the latest moment (null = no moments). Computed here so the
+  // card component stays clock-free.
+  daysSinceLastMoment: number | null;
   lastMoment: {
     text: string;
     source: "parent" | "school";
     created_at: string;
   } | null;
+}
+
+function firstSentence(value: unknown, maxLen = 110): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const sentence = value.trim().split(/(?<=[.!?])\s+/)[0] ?? value.trim();
+  return sentence.length > maxLen ? sentence.slice(0, maxLen - 1).trimEnd() + "…" : sentence;
 }
 
 export async function getHomeKidRows(parentId: string): Promise<HomeKidRow[]> {
@@ -478,7 +494,7 @@ export async function getHomeKidRows(parentId: string): Promise<HomeKidRow[]> {
 
   return Promise.all(
     kids.map(async (child) => {
-      const [summaryRes, obsRes] = await Promise.all([
+      const [summaryRes, obsRes, profileRes] = await Promise.all([
         sb
           .from("child_summaries")
           .select("pulse")
@@ -490,12 +506,30 @@ export async function getHomeKidRows(parentId: string): Promise<HomeKidRow[]> {
           .eq("child_id", child.id)
           .order("created_at", { ascending: false })
           .limit(1),
+        sb
+          .from("child_profiles")
+          .select("extra")
+          .eq("child_id", child.id)
+          .maybeSingle(),
       ]);
 
       const obs = obsRes.data?.[0] ?? null;
+      const extra = (profileRes.data?.extra ?? {}) as Record<string, unknown>;
       return {
         child,
         pulse: summaryRes.data?.pulse ?? null,
+        identityLine:
+          firstSentence(extra.temperament_notes) ??
+          firstSentence(
+            Array.isArray(extra.personality_notes)
+              ? extra.personality_notes.join(", ")
+              : extra.personality_notes
+          ),
+        daysSinceLastMoment: obs
+          ? Math.floor(
+              (Date.now() - new Date(obs.created_at).getTime()) / (24 * 60 * 60 * 1000)
+            )
+          : null,
         lastMoment: obs
           ? {
               text: obs.note,

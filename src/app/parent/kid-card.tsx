@@ -14,6 +14,8 @@ interface KidCardProps {
   name: string;
   dateOfBirth: string | null;
   pulse: string | null;
+  identityLine: string | null;
+  daysSinceLastMoment: number | null;
   lastMoment: {
     text: string;
     source: "parent" | "school";
@@ -21,15 +23,28 @@ interface KidCardProps {
   } | null;
 }
 
-// One kid, one glance: name, age, one fresh sentence, last moment.
+// A pulse is observation news — past ~2 quiet weeks it reads as stale
+// ("bounced back after the karate bump" a month later). Then the card falls
+// back to the evergreen identity line from the file, which is never wrong.
+const PULSE_FRESH_DAYS = 14;
+
+// One kid, one glance: name, age, one line that's actually true today,
+// last moment.
 export function KidCard({
   index,
   id,
   name,
   dateOfBirth,
   pulse,
+  identityLine,
+  daysSinceLastMoment,
   lastMoment,
 }: KidCardProps) {
+  const pulseFresh =
+    daysSinceLastMoment !== null && daysSinceLastMoment <= PULSE_FRESH_DAYS;
+  const line =
+    (pulseFresh ? pulse : null) ?? identityLine ?? (pulseFresh ? null : pulse);
+
   return (
     <Link
       href={`/parent/kid/${id}`}
@@ -53,7 +68,7 @@ export function KidCard({
             </span>
           </div>
           <p className="text-[13px] leading-snug text-espresso/85 mt-0.5">
-            {pulse ?? (
+            {line ?? (
               <span className="text-warm-gray">
                 Capture a moment to see {name}&apos;s pulse
               </span>

@@ -31,8 +31,10 @@ export default async function ParentHomePage() {
 
   if (kidRows.length === 0) return <NoKidsState />;
 
+  // Every kid with moments gets a background cache check — new captures
+  // refresh the pulse without a kid-page visit; unchanged kids are free.
   const kidsNeedingPulse = kidRows
-    .filter((r) => !r.pulse && r.lastMoment)
+    .filter((r) => r.lastMoment)
     .map((r) => r.child.id);
 
   return (
@@ -67,6 +69,8 @@ export default async function ParentHomePage() {
             name={row.child.name}
             dateOfBirth={row.child.date_of_birth}
             pulse={row.pulse}
+            identityLine={row.identityLine}
+            daysSinceLastMoment={row.daysSinceLastMoment}
             lastMoment={row.lastMoment}
           />
         ))}
