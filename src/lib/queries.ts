@@ -206,6 +206,22 @@ export async function getTodayObservationCount(classroomId = DEMO_CLASSROOM_ID) 
   return count ?? 0;
 }
 
+// Coverage data for the kid-page radar: recent observations with their
+// domains, dates, and author — counted in the server component.
+export async function getDomainCoverage(childId: string) {
+  const sb = await createServerSupabase();
+  const data = mustList(
+    await sb
+      .from("observations")
+      .select("domains, created_at, source, profiles!observations_teacher_id_fkey(name)")
+      .eq("child_id", childId)
+      .order("created_at", { ascending: false })
+      .limit(200),
+    "load domain coverage"
+  );
+  return data ?? [];
+}
+
 export async function getChildContext(childId: string) {
   const sb = await createServerSupabase();
 

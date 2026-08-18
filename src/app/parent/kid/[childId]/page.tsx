@@ -10,6 +10,7 @@ import {
   getChildSummary,
   getAllJourneyChapters,
   getLatestJourneyChapter,
+  getDomainCoverage,
   countObservationsSince,
 } from "@/lib/queries";
 import { getSessionProfile } from "@/lib/session";
@@ -20,15 +21,16 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { GrowthTimeline } from "@/components/growth/growth-timeline";
 import { ProfileSections } from "@/components/kid/profile-sections";
 import { BasicsCard } from "@/components/kid/basics-card";
+import { IdentityCard } from "@/components/kid/identity-card";
+import { CoverageCard } from "@/components/kid/coverage-card";
 import { ActivitiesTab } from "@/components/kid/activities-tab";
 import { ReportsTab } from "@/components/kid/reports-tab";
 import { GenerateChapterButton } from "@/components/kid/generate-chapter-button";
 import { SummaryCard } from "../../summary-card";
 
-type Tab = "story" | "journey" | "activities" | "reports" | "about";
+type Tab = "story" | "activities" | "reports" | "about";
 const TABS: { key: Tab; label: string; emoji: string }[] = [
   { key: "story", label: "Story", emoji: "🌟" },
-  { key: "journey", label: "Journey", emoji: "🌱" },
   { key: "activities", label: "Activities", emoji: "⚽" },
   { key: "reports", label: "Reports", emoji: "📄" },
   { key: "about", label: "About", emoji: "💛" },
@@ -36,9 +38,8 @@ const TABS: { key: Tab; label: string; emoji: string }[] = [
 
 // What each tab IS — one line, so the names carry meaning.
 const TAB_EXPLAINERS: Record<Tab, string> = {
-  story: "The living feed — every moment you or school captures, plus what it means.",
-  journey:
-    "Every stretch of life becomes a chapter — written by Orbit from the moments you capture.",
+  story:
+    "Who he is, what we've been seeing lately, and the chapters of his story so far.",
   activities:
     "What he's actually doing — it becomes part of his file and his chapters.",
   reports: "School's paper trail, read and remembered by Orbit.",
@@ -150,10 +151,9 @@ export default async function KidPage({
               file up to date.
             </Link>
           )}
-          <StoryTab childId={childId} childName={child.name} />
+          <StoryTab childId={childId} childName={child.name} profile={profile} />
         </>
       )}
-      {tab === "journey" && <JourneyTab childId={childId} childName={child.name} />}
       {tab === "activities" && (
         <ActivitiesTab childId={childId} childName={child.name} />
       )}
@@ -185,15 +185,26 @@ export default async function KidPage({
 async function StoryTab({
   childId,
   childName,
+  profile,
 }: {
   childId: string;
   childName: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  profile: any;
 }) {
-  const [highlights, observations, summaryRow] = await Promise.all([
-    getRecentHighlights(childId, 5),
-    getRecentObservations(childId, 12),
-    getChildSummary(childId),
-  ]);
+  const [highlights, observations, summaryRow, coverage, chapters, latestChapter] =
+    await Promise.all([
+      getRecentHighlights(childId, 5),
+      getRecentObservations(childId, 12),
+      getChildSummary(childId),
+      getDomainCoverage(childId),
+      getAllJourneyChapters(childId),
+      getLatestJourneyChapter(childId),
+    ]);
+  const newMomentCount = await countObservationsSince(
+    childId,
+    latestChapter?.created_at ?? null
+  );
 
   const feed: FeedItem[] = [
     ...highlights.map(
@@ -226,7 +237,9 @@ async function StoryTab({
 
   return (
     <div>
-      <div className="mb-5">
+      <div className="space-y-4 mb-5">
+        <IdentityCard childId={childId} childName={childName} profile={profile} />
+        <CoverageCard childName={childName} rows={coverage} />
         <SummaryCard
           childId={childId}
           childName={childName}
@@ -285,43 +298,27 @@ async function StoryTab({
           ))}
         </div>
       )}
-    </div>
-  );
-}
 
-async function JourneyTab({
-  childId,
-  childName,
-}: {
-  childId: string;
-  childName: string;
-}) {
-  const [chapters, latest] = await Promise.all([
-    getAllJourneyChapters(childId),
-    getLatestJourneyChapter(childId),
-  ]);
-  const newMomentCount = await countObservationsSince(
-    childId,
-    latest?.created_at ?? null
-  );
-
-  return (
-    <div>
-      <GenerateChapterButton
-        childId={childId}
-        childName={childName}
-        newMomentCount={newMomentCount}
-      />
-      {chapters.length === 0 ? (
-        <EmptyState
-          emoji="📖"
-          title="The first chapter is still being written"
-          body={`Capture a few moments, then tap the button above — Orbit writes ${childName}'s chapter from what you saw.`}
-          action={{ href: "/capture", label: "Capture a moment" }}
+      {/* Chapters, folded into the story (the Journey tab confused more than
+          it explained — same content, now in context). */}
+      <div className="mt-8">
+        <p className="text-xs font-bold uppercase tracking-wider text-espresso/60 mb-3">
+          📖 Looking back
+        </p>
+        <GenerateChapterButton
+          childId={childId}
+          childName={childName}
+          newMomentCount={newMomentCount}
         />
-      ) : (
-        <GrowthTimeline chapters={chapters} childName={childName} />
-      )}
+        {chapters.length === 0 ? (
+          <p className="text-xs text-warm-gray leading-relaxed">
+            Once a few moments pile up, tap the button above — Orbit writes a
+            chapter of {childName}&apos;s story from what you saw.
+          </p>
+        ) : (
+          <GrowthTimeline chapters={chapters} childName={childName} />
+        )}
+      </div>
     </div>
   );
 }

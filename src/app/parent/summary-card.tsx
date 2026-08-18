@@ -49,7 +49,7 @@ export function SummaryCard({
   return (
     <div className="bg-gradient-to-br from-lavender/25 to-sand rounded-2xl p-5 border border-lavender/40">
       <p className="text-xs font-bold uppercase tracking-wider text-espresso/60 mb-2">
-        💡 What this means
+        💡 What we&apos;ve been observing
       </p>
       {content ? (
         <p className="text-[15px] text-espresso leading-relaxed font-[family-name:var(--font-chat)]">
