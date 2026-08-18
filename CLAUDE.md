@@ -67,6 +67,28 @@ Key judgment call: ROADMAP.md's "Phase 1–3 COMPLETE ✅" was scored against ac
 
 ## Changelog
 
+- **Aug 17, 2026 — Round 4 (main).** No SQL this round. **Keep-alive:**
+  `/api/health` (proxy-exempt, trivial head-count select) + daily Vercel
+  cron in `vercel.json` — the Supabase free tier had paused the project
+  after a quiet week; any REST request counts as activity. **Capture
+  text-first:** shared `ComposeBox` (textarea-first, in-app mic streams
+  into it; Wispr Flow / keyboard dictation land natively); step machine
+  14→9 (record→stop→review triplets collapsed); ready screen = kid chips
+  + 'Worth capturing' pills + one big button; width standardized to
+  640px; tab-bar center icon mic→pencil. **Home v3:** capture hero first,
+  kid cards, quick-action doors into activity/weekend planners. **Kid
+  page v2:** tabs Story·Activities·Reports·About; Story = IdentityCard
+  (deterministic 'who he is' from the file) → CoverageCard (recency +
+  stale flag >14d + SVG domain radar over 90 days, suppressed under 5
+  moments + thin-domain capture nudges; new `getDomainCoverage` query) →
+  'What we've been observing' (retitled summary) → feed → 'Looking back'
+  (chapters folded in; Journey tab and journey redirect gone). **Shell:**
+  three tabs (Home owns kid pages, More covers planners+chat), Ask
+  demoted to a More-page card, About gets jump chips + one calm pill
+  palette + collapsible quotes. **Desktop light pass:** shell lg:1040px,
+  grids on home/More/ideas/About, Story main column + sticky rail;
+  capture & chat deliberately narrow.
+
 - **Jul 25, 2026 — AI trust layer + first tests.** `src/lib/parse-ai.ts`
   is now the ONE place AI text becomes trusted data: `parseAIResponse`
   (fence/prose stripping + a zod schema per response shape; throws
