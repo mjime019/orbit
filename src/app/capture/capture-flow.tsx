@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { useSpeechCapture } from "@/lib/use-speech-capture";
+import { ComposeBox } from "@/components/capture/compose-box";
 import {
   DOMAIN_CONFIG,
   SOCIAL_TAG_CONFIG,
@@ -57,17 +57,15 @@ interface CardState {
   socialTag: SocialTag | null;
 }
 
+// Text-first flow (Round 4): every input moment is one compose screen —
+// a real textarea (Wispr Flow / keyboard dictation land here) with the
+// in-app mic as assist. The old record→stop→review triplets are gone.
 type Step =
   | "ready"
-  | "recording"
-  | "review"
+  | "compose"
   | "processing"
-  | "followup-question"
-  | "followup-recording"
-  | "followup-review"
+  | "followup"
   | "anything-else"
-  | "anything-else-recording"
-  | "anything-else-review"
   | "processing-final"
   | "cards"
   | "saving"
@@ -82,18 +80,18 @@ interface CaptureFlowProps {
 
 // ─── Context prompts ────────────────────────────────────────────────
 const SCHOOL_FLOW = [
-  { emoji: "🌅", label: "Arrival & morning activity" },
-  { emoji: "🎨", label: "Structured activity / project" },
-  { emoji: "🍎", label: "Snack time" },
-  { emoji: "🧱", label: "Free play / outdoor time" },
-  { emoji: "📖", label: "Afternoon / wind-down" },
+  { emoji: "🌅", label: "Morning activity" },
+  { emoji: "🎨", label: "Project time" },
+  { emoji: "🍎", label: "Snack" },
+  { emoji: "🧱", label: "Free play" },
+  { emoji: "📖", label: "Wind-down" },
 ];
 
 const HOME_FLOW = [
-  { emoji: "🌳", label: "An outing or adventure" },
+  { emoji: "🌳", label: "An outing" },
   { emoji: "🍝", label: "A mealtime moment" },
-  { emoji: "🛁", label: "Routines — bath, bedtime" },
-  { emoji: "🧸", label: "Play you watched or joined" },
+  { emoji: "🛁", label: "Bath, bedtime" },
+  { emoji: "🧸", label: "Play" },
   { emoji: "💬", label: "Something they said" },
 ];
 
@@ -141,19 +139,12 @@ export function CaptureFlow({
   const [followups, setFollowups] = useState<FollowupQuestion[]>([]);
   const [currentFollowupIndex, setCurrentFollowupIndex] = useState(0);
   const [followupResponses, setFollowupResponses] = useState<string[]>([]);
-  const [followupTranscript, setFollowupTranscript] = useState("");
+  const [followupText, setFollowupText] = useState("");
   const [allFollowupText, setAllFollowupText] = useState("");
-  const [anythingElseTranscript, setAnythingElseTranscript] = useState("");
+  const [anythingElseText, setAnythingElseText] = useState("");
   const [error, setError] = useState("");
   const [savedCount, setSavedCount] = useState(0);
-  const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [textInput, setTextInput] = useState("");
-  const [followupTextInput, setFollowupTextInput] = useState("");
-  const [anythingElseTextInput, setAnythingElseTextInput] = useState("");
-  const speech = useSpeechCapture();
-  const useTextInput = speech.fallbackToText;
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const captureIdRef = useRef<string | null>(null);
 
   // Auth is the family login (middleware session) — no per-page code needed.
@@ -168,43 +159,6 @@ export function CaptureFlow({
     }
     return res;
   }, []);
-
-  // ─── Timer ──────────────────────────────────────────────────────
-  const startTimer = () => {
-    setRecordingSeconds(0);
-    timerRef.current = setInterval(() => setRecordingSeconds((s) => s + 1), 1000);
-  };
-  const stopTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  };
-  const formatTime = (s: number) =>
-    `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
-
-  // ─── Main recording ─────────────────────────────────────────────
-  const handleStartRecording = () => {
-    setStep("recording");
-    setTranscript("");
-    setError("");
-    startTimer();
-    speech.start();
-  };
-
-  const handleStopRecording = () => {
-    stopTimer();
-    const spoken = speech.stop();
-    const finalTranscript = useTextInput
-      ? textInput
-      : `${transcript} ${spoken}`.replace(/\s+/g, " ").trim();
-    if (!finalTranscript.trim()) {
-      setStep("ready");
-      return;
-    }
-    setTranscript(finalTranscript);
-    setStep("review");
-  };
 
   // ─── Submit: words first, then AI ────────────────────────────────
   const handleSubmitTranscript = async () => {
@@ -232,7 +186,7 @@ export function CaptureFlow({
         (err instanceof Error ? err.message : "Couldn't save the recording.") +
           " Your words are still below — tap submit to retry."
       );
-      setStep("review");
+      setStep("compose");
       return;
     }
 
@@ -250,7 +204,7 @@ export function CaptureFlow({
         setError(
           `${processData.error || "Couldn't process the recording."} Your recording is saved — tap submit to retry.`
         );
-        setStep("review");
+        setStep("compose");
         return;
       }
       // Honest dead-end guard: the words saved, but there was no actual
@@ -259,7 +213,7 @@ export function CaptureFlow({
         setError(
           `I couldn't find a moment about ${childNames} in that. Describe what happened — "${effectiveRoster[0]?.name ?? "he"} built a huge tower and said…" — then submit again.`
         );
-        setStep("review");
+        setStep("compose");
         return;
       }
       setExtraction(processData.observations);
@@ -282,7 +236,8 @@ export function CaptureFlow({
         setFollowups(followupData.followups);
         setCurrentFollowupIndex(0);
         setFollowupResponses([]);
-        setStep("followup-question");
+        setFollowupText("");
+        setStep("followup");
       } else {
         setAllFollowupText("");
         setStep("anything-else");
@@ -290,40 +245,24 @@ export function CaptureFlow({
     } catch (err) {
       console.error(err);
       setError("Couldn't process the recording — it's saved. Tap submit to retry.");
-      setStep("review");
+      setStep("compose");
     }
   };
 
   // ─── Follow-up loop ──────────────────────────────────────────────
-  const handleStartFollowupRecording = () => {
-    setStep("followup-recording");
-    setFollowupTranscript("");
-    setFollowupTextInput("");
-    startTimer();
-    speech.start();
-  };
-
-  const handleStopFollowupRecording = () => {
-    stopTimer();
-    const spoken = speech.stop();
-    setFollowupTranscript(useTextInput ? followupTextInput : spoken);
-    setStep("followup-review");
-  };
-
   const advanceFollowups = (responses: string[]) => {
     const nextIndex = responses.length;
     if (nextIndex < followups.length) {
       setCurrentFollowupIndex(nextIndex);
-      setFollowupTranscript("");
-      setFollowupTextInput("");
-      setStep("followup-question");
+      setFollowupText("");
+      setStep("followup");
     } else {
       finishFollowups(responses);
     }
   };
 
   const handleSubmitFollowupResponse = () => {
-    const newResponses = [...followupResponses, followupTranscript];
+    const newResponses = [...followupResponses, followupText.trim()];
     setFollowupResponses(newResponses);
     advanceFollowups(newResponses);
   };
@@ -340,37 +279,17 @@ export function CaptureFlow({
       .filter(Boolean)
       .join("\n\n");
     setAllFollowupText(text);
-    setAnythingElseTranscript("");
-    setAnythingElseTextInput("");
+    setAnythingElseText("");
     setStep("anything-else");
   };
 
   // ─── Anything else ───────────────────────────────────────────────
-  const handleStartAnythingElse = () => {
-    setStep("anything-else-recording");
-    setAnythingElseTranscript("");
-    setAnythingElseTextInput("");
-    startTimer();
-    speech.start();
-  };
-
-  const handleStopAnythingElse = () => {
-    stopTimer();
-    const spoken = speech.stop();
-    setAnythingElseTranscript(useTextInput ? anythingElseTextInput : spoken);
-    setStep("anything-else-review");
-  };
-
-  const handleSubmitAnythingElse = () => {
-    const extra = anythingElseTranscript.trim();
+  const handleFinishAnythingElse = () => {
+    const extra = anythingElseText.trim();
     const fullFollowup = extra
       ? `${allFollowupText}\n\n[Additional from ${speakerName}]: ${extra}`
       : allFollowupText;
     finalizeAndReview(fullFollowup);
-  };
-
-  const handleCloseOut = () => {
-    finalizeAndReview(allFollowupText);
   };
 
   // ─── Finalize: persist follow-ups, re-extract, build review cards ─
@@ -492,7 +411,6 @@ export function CaptureFlow({
 
   const handleReset = () => {
     captureIdRef.current = null;
-    speech.reset();
     setStep("ready");
     setTranscript("");
     setExtraction(null);
@@ -500,75 +418,35 @@ export function CaptureFlow({
     setFollowups([]);
     setCurrentFollowupIndex(0);
     setFollowupResponses([]);
-    setFollowupTranscript("");
+    setFollowupText("");
     setAllFollowupText("");
-    setAnythingElseTranscript("");
+    setAnythingElseText("");
     setError("");
     setSavedCount(0);
-    setRecordingSeconds(0);
-    setTextInput("");
-    setFollowupTextInput("");
-    setAnythingElseTextInput("");
   };
 
   const contextFlow = ctx === "teacher" ? SCHOOL_FLOW : HOME_FLOW;
   const childNames = effectiveRoster.map((r) => r.name).join(" & ");
   const homeHref = ctx === "teacher" ? "/teacher" : "/parent";
 
-  const recordingIndicator = (
-    <div className="flex items-center justify-center gap-3 mb-4">
-      <span className="recording-pulse w-3 h-3 rounded-full bg-rust" />
-      <span className="text-sm font-medium text-rust">
-        Recording {formatTime(recordingSeconds)}
-      </span>
-    </div>
-  );
-
-  const liveTranscript = (prefix: string) => (
-    <p className="text-sm text-espresso leading-relaxed">
-      {prefix && `${prefix} `}
-      {speech.finalText}
-      {speech.interimText && (
-        <span className="text-warm-gray">{speech.interimText}</span>
-      )}
-      {!prefix && !speech.finalText && !speech.interimText && (
-        <span className="text-warm-gray/50">Listening...</span>
-      )}
-    </p>
-  );
-
-  const micButton = (onClick: () => void, size = "w-24 h-24") => (
-    <button
-      onClick={onClick}
-      disabled={roster.length === 0}
-      className={`${size} rounded-full bg-rust text-white flex items-center justify-center shadow-lg hover:bg-rust/90 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none`}
-    >
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-        <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-      </svg>
-    </button>
-  );
-
-  const stopButton = (onClick: () => void) => (
-    <div className="flex flex-col items-center">
-      <button
-        onClick={onClick}
-        className="w-20 h-20 rounded-full bg-espresso text-white flex items-center justify-center shadow-lg active:scale-95 transition-all"
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-          <rect x="6" y="6" width="12" height="12" rx="2" />
-        </svg>
-      </button>
-      <p className="text-sm text-warm-gray mt-3">Tap to finish</p>
+  const starterPills = (
+    <div className="flex flex-wrap gap-1.5 justify-center">
+      {THOUGHT_STARTERS.map((starter) => (
+        <span
+          key={starter}
+          className="text-xs px-2.5 py-1 rounded-full bg-rust/10 text-rust/80"
+        >
+          {starter}
+        </span>
+      ))}
     </div>
   );
 
   // ─── Render ──────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-cream">
-      <div className="max-w-lg mx-auto px-5 py-8 pb-24">
-        <header className="text-center mb-8">
+      <div className="max-w-[640px] mx-auto px-5 py-8 pb-24">
+        <header className="text-center mb-6">
           <h1 className="font-[family-name:var(--font-playfair)] text-2xl font-semibold text-espresso">
             {ctx === "teacher" ? "Day Capture" : "Capture a Moment"}
           </h1>
@@ -611,7 +489,7 @@ export function CaptureFlow({
             )}
 
             {ctx === "parent" && roster.length > 1 && (
-              <div className="mb-6">
+              <div className="mb-5">
                 <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-2 text-center">
                   Who is this about?
                 </p>
@@ -643,29 +521,35 @@ export function CaptureFlow({
               </div>
             )}
 
-            <div className="bg-sand rounded-2xl p-5 mb-6">
-              <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">
-                {ctx === "teacher" ? "Today's flow" : "Worth capturing"}
+            <div className="mb-6">
+              <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-2 text-center">
+                Worth capturing
               </p>
-              <div className="space-y-2.5">
+              <div className="flex flex-wrap gap-1.5 justify-center">
                 {contextFlow.map((item) => (
-                  <div key={item.label} className="flex items-center gap-3">
-                    <span className="text-lg">{item.emoji}</span>
-                    <span className="text-sm text-espresso">{item.label}</span>
-                  </div>
+                  <span
+                    key={item.label}
+                    className="text-xs px-2.5 py-1 rounded-full bg-sand text-espresso/80"
+                  >
+                    {item.emoji} {item.label}
+                  </span>
                 ))}
               </div>
             </div>
 
-            <div className="flex flex-col items-center gap-4">
-              {micButton(handleStartRecording)}
-              <p className="text-sm text-warm-gray">Tap to start talking</p>
-              {useTextInput && (
-                <p className="text-xs text-rust">
-                  Voice not available — you can type instead
-                </p>
-              )}
-            </div>
+            <button
+              onClick={() => {
+                setError("");
+                setStep("compose");
+              }}
+              disabled={roster.length === 0}
+              className="w-full py-4 bg-rust text-white rounded-2xl text-base font-semibold shadow-md hover:bg-rust/90 active:scale-[0.99] transition-all disabled:opacity-40 disabled:pointer-events-none"
+            >
+              ✏️ Capture a moment
+            </button>
+            <p className="text-xs text-warm-gray text-center mt-2">
+              Type it, dictate it, or tap the mic — whatever&apos;s fastest.
+            </p>
 
             {error && (
               <div className="mt-4 p-3 bg-red-50 rounded-xl text-sm text-red-700">
@@ -675,83 +559,40 @@ export function CaptureFlow({
           </div>
         )}
 
-        {/* ─── RECORDING ─────────────────────────────────────── */}
-        {step === "recording" && (
-          <div className="fade-up">
-            {recordingIndicator}
-            <div className="bg-sand rounded-2xl p-5 mb-6 min-h-[160px]">
-              {useTextInput ? (
-                <textarea
-                  value={textInput}
-                  onChange={(e) => setTextInput(e.target.value)}
-                  placeholder="Type what happened..."
-                  className="w-full bg-transparent text-espresso text-sm resize-none outline-none min-h-[140px] placeholder:text-warm-gray/50"
-                  autoFocus
-                />
-              ) : (
-                liveTranscript(transcript)
-              )}
-            </div>
-
-            <div className="mb-6">
-              <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-2 text-center">
-                Think about...
-              </p>
-              <div className="flex flex-wrap gap-1.5 justify-center">
-                {THOUGHT_STARTERS.map((starter) => (
-                  <span
-                    key={starter}
-                    className="text-xs px-2.5 py-1 rounded-full bg-rust/10 text-rust/80"
-                  >
-                    {starter}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {stopButton(handleStopRecording)}
-          </div>
-        )}
-
-        {/* ─── REVIEW WORDS ──────────────────────────────────── */}
-        {step === "review" && (
+        {/* ─── COMPOSE (type or dictate, then submit) ────────── */}
+        {step === "compose" && (
           <div className="fade-up">
             {error && (
               <div className="mb-4 p-3 bg-red-50 rounded-xl text-sm text-red-700">
                 {error}
               </div>
             )}
-            <div className="bg-sand rounded-2xl p-5 mb-4">
-              <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">
-                Review your recording
-              </p>
-              <textarea
-                value={transcript}
-                onChange={(e) => setTranscript(e.target.value)}
-                className="w-full bg-white rounded-xl p-4 text-sm text-espresso leading-relaxed resize-none outline-none border border-sand-dark/50 focus:border-rust/50 transition-colors min-h-[160px]"
-                rows={8}
-              />
-              <p className="text-xs text-warm-gray mt-2">
-                Edit anything that was captured incorrectly before submitting.
-              </p>
-            </div>
+            <ComposeBox
+              value={transcript}
+              onChange={setTranscript}
+              placeholder={
+                ctx === "teacher"
+                  ? "Talk through the day — who did what, anything that stood out..."
+                  : `What happened? "${effectiveRoster[0]?.name ?? "He"} spent the whole bath narrating a rescue mission..."`
+              }
+              minHeight="180px"
+              autoFocus
+            />
+            <div className="mt-3 mb-5">{starterPills}</div>
 
             <div className="flex flex-col items-center gap-3">
               <button
                 onClick={handleSubmitTranscript}
+                disabled={!transcript.trim()}
                 className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust/90 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
               >
                 Looks good — submit
               </button>
               <button
-                onClick={() => {
-                  setStep("recording");
-                  startTimer();
-                  speech.start();
-                }}
+                onClick={() => setStep("ready")}
                 className="text-sm text-warm-gray underline underline-offset-2"
               >
-                Record more
+                ← Back
               </button>
             </div>
           </div>
@@ -775,8 +616,8 @@ export function CaptureFlow({
           </div>
         )}
 
-        {/* ─── FOLLOW-UP QUESTION ────────────────────────────── */}
-        {step === "followup-question" && followups[currentFollowupIndex] && (
+        {/* ─── FOLLOW-UP ─────────────────────────────────────── */}
+        {step === "followup" && followups[currentFollowupIndex] && (
           <div className="fade-up">
             <div className="flex items-center justify-center gap-1.5 mb-6">
               {followups.map((_, i) => (
@@ -793,7 +634,7 @@ export function CaptureFlow({
               ))}
             </div>
 
-            <div className="bg-sand rounded-2xl p-5 mb-6">
+            <div className="bg-sand rounded-2xl p-5 mb-4">
               <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">
                 Follow-up {currentFollowupIndex + 1} of {followups.length}
               </p>
@@ -805,10 +646,22 @@ export function CaptureFlow({
               </div>
             </div>
 
-            <div className="flex flex-col items-center gap-3">
-              {micButton(handleStartFollowupRecording, "w-20 h-20")}
-              <p className="text-sm text-warm-gray">Tap to respond</p>
-              <div className="flex gap-4 mt-2">
+            <ComposeBox
+              value={followupText}
+              onChange={setFollowupText}
+              placeholder="Type or dictate your answer — or skip it..."
+              minHeight="110px"
+            />
+
+            <div className="flex flex-col items-center gap-3 mt-4">
+              <button
+                onClick={handleSubmitFollowupResponse}
+                disabled={!followupText.trim()}
+                className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust/90 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
+              >
+                {currentFollowupIndex + 1 < followups.length ? "Next question" : "Finish"}
+              </button>
+              <div className="flex gap-4">
                 <button
                   onClick={handleSkipCurrentFollowup}
                   className="text-sm text-warm-gray underline underline-offset-2"
@@ -826,79 +679,10 @@ export function CaptureFlow({
           </div>
         )}
 
-        {/* ─── FOLLOW-UP RECORDING ───────────────────────────── */}
-        {step === "followup-recording" && followups[currentFollowupIndex] && (
-          <div className="fade-up">
-            <div className="bg-sand/60 rounded-xl p-3 mb-4">
-              <p className="text-xs text-warm-gray">
-                {followups[currentFollowupIndex].question}
-              </p>
-            </div>
-            {recordingIndicator}
-            <div className="bg-sand rounded-2xl p-5 mb-6 min-h-[120px]">
-              {useTextInput ? (
-                <textarea
-                  value={followupTextInput}
-                  onChange={(e) => setFollowupTextInput(e.target.value)}
-                  placeholder="Type your response..."
-                  className="w-full bg-transparent text-espresso text-sm resize-none outline-none min-h-[100px] placeholder:text-warm-gray/50"
-                  autoFocus
-                />
-              ) : (
-                liveTranscript("")
-              )}
-            </div>
-            {stopButton(handleStopFollowupRecording)}
-          </div>
-        )}
-
-        {/* ─── FOLLOW-UP REVIEW ──────────────────────────────── */}
-        {step === "followup-review" && followups[currentFollowupIndex] && (
-          <div className="fade-up">
-            <div className="bg-sand/60 rounded-xl p-3 mb-4">
-              <p className="text-xs text-warm-gray">
-                {followups[currentFollowupIndex].question}
-              </p>
-            </div>
-
-            <div className="bg-sand rounded-2xl p-5 mb-4">
-              <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">
-                Review your response
-              </p>
-              <textarea
-                value={followupTranscript}
-                onChange={(e) => setFollowupTranscript(e.target.value)}
-                className="w-full bg-white rounded-xl p-4 text-sm text-espresso leading-relaxed resize-none outline-none border border-sand-dark/50 focus:border-rust/50 transition-colors min-h-[100px]"
-                rows={4}
-              />
-            </div>
-
-            <div className="flex flex-col items-center gap-3">
-              <button
-                onClick={handleSubmitFollowupResponse}
-                className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust/90 active:scale-95 transition-all"
-              >
-                {currentFollowupIndex + 1 < followups.length ? "Next question" : "Finish"}
-              </button>
-              <button
-                onClick={() => {
-                  setStep("followup-recording");
-                  setFollowupTranscript("");
-                  startTimer();
-                  speech.start();
-                }}
-                className="text-sm text-warm-gray underline underline-offset-2"
-              >
-                Re-record
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* ─── ANYTHING ELSE ─────────────────────────────────── */}
         {step === "anything-else" && (
           <div className="fade-up">
-            <div className="bg-sand rounded-2xl p-5 mb-6">
+            <div className="bg-sand rounded-2xl p-5 mb-4">
               <div className="flex gap-3">
                 <span className="text-lg mt-0.5">💭</span>
                 <p className="text-base text-espresso leading-relaxed">
@@ -907,78 +691,19 @@ export function CaptureFlow({
               </div>
             </div>
 
-            <div className="flex flex-col items-center gap-3">
-              <div className="flex gap-3 w-full max-w-xs">
-                <button
-                  onClick={handleStartAnythingElse}
-                  className="flex-1 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust/90 active:scale-95 transition-all"
-                >
-                  🎤 Add more
-                </button>
-                <button
-                  onClick={handleCloseOut}
-                  className="flex-1 py-3 bg-espresso text-white rounded-full text-sm font-medium shadow-md hover:bg-espresso/90 active:scale-95 transition-all"
-                >
-                  All done
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+            <ComposeBox
+              value={anythingElseText}
+              onChange={setAnythingElseText}
+              placeholder="Anything else — or leave it empty and finish..."
+              minHeight="110px"
+            />
 
-        {/* ─── ANYTHING ELSE RECORDING ───────────────────────── */}
-        {step === "anything-else-recording" && (
-          <div className="fade-up">
-            {recordingIndicator}
-            <div className="bg-sand rounded-2xl p-5 mb-6 min-h-[120px]">
-              {useTextInput ? (
-                <textarea
-                  value={anythingElseTextInput}
-                  onChange={(e) => setAnythingElseTextInput(e.target.value)}
-                  placeholder="Anything else you want to add..."
-                  className="w-full bg-transparent text-espresso text-sm resize-none outline-none min-h-[100px] placeholder:text-warm-gray/50"
-                  autoFocus
-                />
-              ) : (
-                liveTranscript("")
-              )}
-            </div>
-            {stopButton(handleStopAnythingElse)}
-          </div>
-        )}
-
-        {/* ─── ANYTHING ELSE REVIEW ──────────────────────────── */}
-        {step === "anything-else-review" && (
-          <div className="fade-up">
-            <div className="bg-sand rounded-2xl p-5 mb-4">
-              <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">
-                Review what you added
-              </p>
-              <textarea
-                value={anythingElseTranscript}
-                onChange={(e) => setAnythingElseTranscript(e.target.value)}
-                className="w-full bg-white rounded-xl p-4 text-sm text-espresso leading-relaxed resize-none outline-none border border-sand-dark/50 focus:border-rust/50 transition-colors min-h-[100px]"
-                rows={4}
-              />
-            </div>
-
-            <div className="flex flex-col items-center gap-3">
+            <div className="flex flex-col items-center gap-3 mt-4">
               <button
-                onClick={handleSubmitAnythingElse}
-                className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust/90 active:scale-95 transition-all"
+                onClick={handleFinishAnythingElse}
+                className="px-8 py-3 bg-espresso text-white rounded-full text-sm font-medium shadow-md hover:bg-espresso/90 active:scale-95 transition-all"
               >
-                Continue
-              </button>
-              <button
-                onClick={() => {
-                  setStep("anything-else-recording");
-                  setAnythingElseTranscript("");
-                  startTimer();
-                  speech.start();
-                }}
-                className="text-sm text-warm-gray underline underline-offset-2"
-              >
-                Re-record
+                {anythingElseText.trim() ? "Add it & review" : "All done — review"}
               </button>
             </div>
           </div>
@@ -1102,7 +827,7 @@ export function CaptureFlow({
                 {confirmableCards.length === 1 ? "" : "s"}
               </button>
               <button
-                onClick={() => setStep("review")}
+                onClick={() => setStep("compose")}
                 className="text-sm text-warm-gray underline underline-offset-2"
               >
                 Back to my words
