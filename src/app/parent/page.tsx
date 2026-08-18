@@ -58,7 +58,7 @@ export default async function ParentHomePage() {
         ✏️ Capture a moment
       </Link>
 
-      <div className="space-y-3">
+      <div className="grid gap-3 lg:grid-cols-3">
         {kidRows.map((row, i) => (
           <KidCard
             key={row.child.id}

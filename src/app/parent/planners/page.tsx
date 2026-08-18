@@ -53,7 +53,7 @@ export default async function PlannersPage() {
           child?.name ? `Tools built around your kids' files` : undefined
         }
       />
-      <div className="grid gap-3 mt-4">
+      <div className="grid gap-3 mt-4 lg:grid-cols-2">
         {PLANNERS.map((p) => (
           <Link
             key={p.href}

@@ -10,7 +10,7 @@ export default function ParentLayout({
     <div className="min-h-screen bg-cream">
       <AppHeader />
       {/* pb-24 keeps content clear of the fixed tab bar */}
-      <div className="mx-auto max-w-[640px] px-6 py-6 pb-24">{children}</div>
+      <div className="mx-auto max-w-[640px] lg:max-w-[1040px] px-6 py-6 pb-24">{children}</div>
       <TabBar />
     </div>
   );

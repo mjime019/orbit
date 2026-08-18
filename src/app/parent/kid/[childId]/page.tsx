@@ -236,10 +236,16 @@ async function StoryTab({
     .slice(0, 12);
 
   return (
-    <div>
-      <div className="space-y-4 mb-5">
+    // Desktop: identity + coverage become a sticky right rail; the summary,
+    // feed, and chapters read as the main column. Mobile keeps one column.
+    <div className="lg:grid lg:grid-cols-[1fr_340px] lg:gap-6 lg:items-start">
+      <div className="space-y-4 mb-5 lg:mb-0 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-20">
         <IdentityCard childId={childId} childName={childName} profile={profile} />
         <CoverageCard childName={childName} rows={coverage} />
+      </div>
+
+      <div className="lg:col-start-1 lg:row-start-1">
+      <div className="mb-5">
         <SummaryCard
           childId={childId}
           childName={childName}
@@ -318,6 +324,7 @@ async function StoryTab({
         ) : (
           <GrowthTimeline chapters={chapters} childName={childName} />
         )}
+      </div>
       </div>
     </div>
   );

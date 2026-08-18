@@ -150,21 +150,29 @@ export function IdeaCards({
       ) : (
         <div className="space-y-3">
           {kept.length > 0 && (
-            <p className="text-[10px] font-semibold text-warm-gray uppercase tracking-wide">
-              Keeping
-            </p>
+            <>
+              <p className="text-[10px] font-semibold text-warm-gray uppercase tracking-wide">
+                Keeping
+              </p>
+              <div className="grid gap-3 lg:grid-cols-2">
+                {kept.map((idea) => (
+                  <IdeaCard key={idea.id} idea={idea} onStatus={setStatus} />
+                ))}
+              </div>
+            </>
           )}
-          {kept.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} onStatus={setStatus} />
-          ))}
           {suggested.length > 0 && (
-            <p className="text-[10px] font-semibold text-warm-gray uppercase tracking-wide pt-1">
-              Fresh ideas
-            </p>
+            <>
+              <p className="text-[10px] font-semibold text-warm-gray uppercase tracking-wide pt-1">
+                Fresh ideas
+              </p>
+              <div className="grid gap-3 lg:grid-cols-2">
+                {suggested.map((idea) => (
+                  <IdeaCard key={idea.id} idea={idea} onStatus={setStatus} />
+                ))}
+              </div>
+            </>
           )}
-          {suggested.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} onStatus={setStatus} />
-          ))}
         </div>
       )}
     </div>

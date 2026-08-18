@@ -75,7 +75,10 @@ function Section({
 }) {
   // scroll-mt keeps anchored sections clear of the sticky header.
   return (
-    <div id={id} className="bg-white rounded-2xl shadow-sm p-4 scroll-mt-20">
+    <div
+      id={id}
+      className="bg-white rounded-2xl shadow-sm p-4 scroll-mt-20 lg:break-inside-avoid lg:mb-4"
+    >
       <div className="flex items-center gap-2 mb-2.5">
         <span className="text-sm">{emoji}</span>
         <h3 className="text-[11px] font-bold text-espresso uppercase tracking-wider">{title}</h3>
@@ -276,7 +279,8 @@ export function ProfileSections({ profile }: { profile: any }) {
           ))}
         </div>
       )}
-      <div className="space-y-3">
+      {/* Desktop: two masonry columns; cards keep their natural heights. */}
+      <div className="space-y-3 lg:space-y-0 lg:columns-2 lg:gap-4">
         {visible.map((s) => (
           <Section key={s.key} id={`about-${s.key}`} emoji={s.emoji} title={s.title}>
             {sectionContent[s.key]}

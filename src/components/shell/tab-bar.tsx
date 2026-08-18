@@ -26,7 +26,7 @@ export function TabBar() {
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 pointer-events-none">
-      <div className="mx-auto max-w-[640px] pointer-events-auto">
+      <div className="mx-auto max-w-[640px] lg:max-w-[1040px] pointer-events-auto">
         <div
           className="bg-white/95 backdrop-blur border-t border-sand-dark/50 px-2 flex items-end justify-around"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
