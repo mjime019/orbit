@@ -40,33 +40,47 @@ function Paragraph({ text }: { text: string }) {
 }
 
 function Quotes({ items }: { items: string[] }) {
+  const shown = items.slice(0, 3);
+  const rest = items.slice(3);
+  const quote = (q: string) => (
+    <p key={q} className="text-xs text-espresso/80 italic leading-relaxed">
+      &ldquo;{q.replace(/^["“]|["”]$/g, "")}&rdquo;
+    </p>
+  );
   return (
     <div className="space-y-1.5">
-      {items.map((q) => (
-        <p key={q} className="text-xs text-espresso/80 italic leading-relaxed">
-          &ldquo;{q.replace(/^["“]|["”]$/g, "")}&rdquo;
-        </p>
-      ))}
+      {shown.map(quote)}
+      {rest.length > 0 && (
+        <details>
+          <summary className="text-[11px] text-rust cursor-pointer select-none">
+            Show {rest.length} more
+          </summary>
+          <div className="space-y-1.5 mt-1.5">{rest.map(quote)}</div>
+        </details>
+      )}
     </div>
   );
 }
 
 function Section({
+  id,
   emoji,
   title,
   children,
 }: {
+  id: string;
   emoji: string;
   title: string;
   children: React.ReactNode;
 }) {
+  // scroll-mt keeps anchored sections clear of the sticky header.
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-base">{emoji}</span>
+    <div id={id} className="bg-white rounded-2xl shadow-sm p-4 scroll-mt-20">
+      <div className="flex items-center gap-2 mb-2.5">
+        <span className="text-sm">{emoji}</span>
         <h3 className="text-[11px] font-bold text-espresso uppercase tracking-wider">{title}</h3>
       </div>
-      <div className="space-y-3">{children}</div>
+      <div className="space-y-2.5">{children}</div>
     </div>
   );
 }
@@ -157,7 +171,7 @@ export function ProfileSections({ profile }: { profile: any }) {
       ) : null,
       profile?.emerging_interests?.length ? (
         <Labeled key="emerging" label="Emerging">
-          <Pills items={profile.emerging_interests} color="bg-sky/10 text-sky" />
+          <Pills items={profile.emerging_interests} />
         </Labeled>
       ) : null,
       profile?.play_style ? (
@@ -179,17 +193,17 @@ export function ProfileSections({ profile }: { profile: any }) {
     sensitivities: [
       profile?.food_sensitivities?.length ? (
         <Labeled key="food" label="Food">
-          <Pills items={profile.food_sensitivities} color="bg-red-50 text-red-700" />
+          <Pills items={profile.food_sensitivities} color="bg-rust/10 text-rust" />
         </Labeled>
       ) : null,
       profile?.sensory_sensitivities?.length ? (
         <Labeled key="sensory" label="Sensory">
-          <Pills items={profile.sensory_sensitivities} color="bg-orange-50 text-orange-700" />
+          <Pills items={profile.sensory_sensitivities} color="bg-rust/10 text-rust" />
         </Labeled>
       ) : null,
       profile?.emotional_triggers?.length ? (
         <Labeled key="emotional" label="Emotional Triggers">
-          <Pills items={profile.emotional_triggers} color="bg-purple-50 text-purple-700" />
+          <Pills items={profile.emotional_triggers} color="bg-rust/10 text-rust" />
         </Labeled>
       ) : null,
       ...extrasFor("sensitivities"),
@@ -225,7 +239,7 @@ export function ProfileSections({ profile }: { profile: any }) {
     values: [
       parentValues.length ? (
         <Labeled key="values" label="What matters most">
-          <Pills items={parentValues} color="bg-lavender/30 text-espresso" />
+          <Pills items={parentValues} />
         </Labeled>
       ) : null,
       ...extrasFor("values"),
@@ -248,12 +262,27 @@ export function ProfileSections({ profile }: { profile: any }) {
   }
 
   return (
-    <div className="space-y-4">
-      {visible.map((s) => (
-        <Section key={s.key} emoji={s.emoji} title={s.title}>
-          {sectionContent[s.key]}
-        </Section>
-      ))}
+    <div>
+      {visible.length >= 4 && (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {visible.map((s) => (
+            <a
+              key={s.key}
+              href={`#about-${s.key}`}
+              className="text-[11px] px-2.5 py-1 rounded-full bg-white border border-sand-dark/50 text-warm-gray hover:text-espresso transition-colors"
+            >
+              {s.emoji} {s.title}
+            </a>
+          ))}
+        </div>
+      )}
+      <div className="space-y-3">
+        {visible.map((s) => (
+          <Section key={s.key} id={`about-${s.key}`} emoji={s.emoji} title={s.title}>
+            {sectionContent[s.key]}
+          </Section>
+        ))}
+      </div>
     </div>
   );
 }

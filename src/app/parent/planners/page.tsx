@@ -8,6 +8,12 @@ import { SectionHead } from "@/components/ui/section-head";
 
 const PLANNERS = [
   {
+    href: "/parent/chat",
+    emoji: "💬",
+    title: "Ask Orbit",
+    body: "Chat grounded in each kid's file — moments, patterns, what helps",
+  },
+  {
     href: "/parent/activities",
     emoji: "🏠",
     title: "Activity planner",
@@ -42,8 +48,10 @@ export default async function PlannersPage() {
     <div className="fade-up">
       <SectionHead
         emoji="🗺️"
-        title="Planners"
-        subtitle={child?.name ? `Built around ${child.name}` : undefined}
+        title="More"
+        subtitle={
+          child?.name ? `Tools built around your kids' files` : undefined
+        }
       />
       <div className="grid gap-3 mt-4">
         {PLANNERS.map((p) => (

@@ -3,21 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// Round 4: three tabs + capture. The Journey tab folded into each kid's
+// Story (Home now owns the kid pages); Ask moved to the More page.
 const TABS = [
-  { href: "/parent", label: "Home", emoji: "🏠", match: /^\/parent$/ },
   {
-    href: "/parent/growth",
-    label: "Journey",
-    emoji: "🌱",
-    match: /^\/parent\/(kid|growth|understand|onboarding|highlights)/,
+    href: "/parent",
+    label: "Home",
+    emoji: "🏠",
+    match: /^\/parent$|^\/parent\/(kid|growth|understand|onboarding|highlights)/,
   },
   { href: "/capture", label: "", emoji: "", match: /^\/capture/, center: true },
-  { href: "/parent/chat", label: "Ask", emoji: "💬", match: /^\/parent\/chat/ },
   {
     href: "/parent/planners",
     label: "More",
     emoji: "🗺️",
-    match: /^\/parent\/(planners|activities|weekends|extras|transition)/,
+    match: /^\/parent\/(planners|activities|weekends|extras|transition|chat)/,
   },
 ];
 
