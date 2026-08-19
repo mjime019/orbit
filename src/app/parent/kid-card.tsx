@@ -1,12 +1,7 @@
 import Link from "next/link";
 import { formatAge } from "@/lib/age";
 import { familyFormatDate } from "@/lib/tz";
-
-const AVATAR_GRADIENTS = [
-  "from-rust to-[#47B3FF]",
-  "from-sage to-[#7DD98F]",
-  "from-[#C9B8F8] to-[#9F86E8]",
-];
+import { AVATAR_GRADIENTS } from "@/lib/kid-colors";
 
 interface KidCardProps {
   index: number;

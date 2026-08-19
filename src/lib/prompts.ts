@@ -487,6 +487,7 @@ RULES:
 - If a listed child wasn't mentioned at all, omit them from the children array.
 - If something is ambiguous, note it but don't guess.
 - Even if the description is short or informal, extract whatever you can. A short observation is better than none.
+- A recording often holds MORE THAN ONE distinct moment about the SAME child — a social moment and a motor-skills moment, or two unrelated stories from the day. Return a SEPARATE children[] entry for each distinct moment, repeating the child's name. One entry = one clean narrative with its own domains; never staple unrelated moments into one summary. (Details of the same single moment stay together.)
 - If the recording contains no actual moment about the children (a question to the app, a test, an accidental recording), still return the JSON shape below with an empty children array — never reply in prose.
 
 Return ONLY valid JSON (no markdown, no backticks):

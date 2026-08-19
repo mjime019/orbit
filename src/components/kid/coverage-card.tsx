@@ -113,6 +113,7 @@ export function CoverageCard({
       )}
 
       {inWindow >= MIN_FOR_RADAR && (
+        <>
         <div className="flex justify-center mt-2">
           <svg viewBox="0 0 200 168" className="w-full max-w-[300px]">
             {[58, 38.67, 19.33].map((r) => (
@@ -161,6 +162,21 @@ export function CoverageCard({
             })}
           </svg>
         </div>
+        {/* Legend with counts — the axes are quantities of moments. */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1 max-w-[300px] mx-auto">
+          {DOMAIN_ORDER.map((d) => (
+            <span key={d} className="text-[11px] text-warm-gray">
+              {DOMAIN_CONFIG[d].emoji} {DOMAIN_CONFIG[d].label}
+              <span className="font-medium text-espresso/70"> · {counts[d]}</span>
+            </span>
+          ))}
+        </div>
+        <p className="text-[11px] text-warm-gray/80 leading-relaxed mt-2.5 max-w-[300px] mx-auto text-center">
+          This shows how often each area appears in recent moments — how much
+          we&apos;ve seen, never how {childName} is doing. A small corner just
+          means fewer stories there so far.
+        </p>
+        </>
       )}
 
       {gaps.length > 0 && (

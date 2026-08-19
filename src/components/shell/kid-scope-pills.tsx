@@ -1,12 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-
-const AVATAR_GRADIENTS = [
-  "from-rust to-[#47B3FF]",
-  "from-sage to-[#7DD98F]",
-  "from-[#C9B8F8] to-[#9F86E8]",
-];
+import { AVATAR_GRADIENTS } from "@/lib/kid-colors";
 
 // Outside the component so the React Compiler doesn't treat the global
 // cookie write as a render-scope mutation.

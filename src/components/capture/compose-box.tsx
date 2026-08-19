@@ -15,6 +15,7 @@ export function ComposeBox({
   disabled = false,
   minHeight = "160px",
   autoFocus = false,
+  borderClass = "border-sand-dark",
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -22,6 +23,8 @@ export function ComposeBox({
   disabled?: boolean;
   minHeight?: string;
   autoFocus?: boolean;
+  /** Kid-scoped capture tints the box in that kid's color. */
+  borderClass?: string;
 }) {
   const speech = useSpeechCapture();
   const baseRef = useRef("");
@@ -57,7 +60,7 @@ export function ComposeBox({
           disabled={disabled}
           autoFocus={autoFocus}
           style={{ minHeight }}
-          className="w-full p-4 pr-14 rounded-xl border-2 border-sand-dark bg-white text-[15px] leading-relaxed text-espresso placeholder:text-warm-gray/50 focus:outline-none focus:border-rust/40 transition-colors resize-none disabled:opacity-50"
+          className={`w-full p-4 pr-14 rounded-xl border-2 ${borderClass} bg-white text-[15px] leading-relaxed text-espresso placeholder:text-warm-gray/50 focus:outline-none focus:border-rust/40 transition-colors resize-none disabled:opacity-50`}
         />
         {!speech.fallbackToText && (
           <button

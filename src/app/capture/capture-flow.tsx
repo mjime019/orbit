@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { ComposeBox } from "@/components/capture/compose-box";
+import { kidGradient, kidBorder } from "@/lib/kid-colors";
 import {
   DOMAIN_CONFIG,
   SOCIAL_TAG_CONFIG,
@@ -133,6 +134,11 @@ export function CaptureFlow({
   const effectiveRoster = selectedKidId
     ? roster.filter((r) => r.id === selectedKidId)
     : roster;
+  // Roster index drives the kid's identity color (same order as home).
+  const selectedKidIndex = selectedKidId
+    ? roster.findIndex((r) => r.id === selectedKidId)
+    : -1;
+  const selectedKid = selectedKidIndex >= 0 ? roster[selectedKidIndex] : null;
   const [transcript, setTranscript] = useState("");
   const [extraction, setExtraction] = useState<Extraction | null>(null);
   const [cards, setCards] = useState<CardState[]>([]);
@@ -490,31 +496,48 @@ export function CaptureFlow({
 
             {ctx === "parent" && roster.length > 1 && (
               <div className="mb-5">
-                <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-2 text-center">
+                <p className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-2.5 text-center">
                   Who is this about?
                 </p>
-                <div className="flex flex-wrap gap-1.5 justify-center">
+                <div className="flex flex-wrap gap-2 justify-center">
                   <button
                     onClick={() => setSelectedKidId(null)}
-                    className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                    className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3.5 py-1.5 transition-all ${
                       selectedKidId === null
-                        ? "bg-espresso text-white"
-                        : "bg-white border border-sand-dark/50 text-warm-gray"
+                        ? "bg-espresso text-white shadow-sm"
+                        : "bg-white border border-sand-dark/60 text-warm-gray opacity-70 hover:opacity-100"
                     }`}
                   >
-                    Everyone
+                    <span className="flex -space-x-1.5">
+                      {roster.slice(0, 3).map((r, i) => (
+                        <span
+                          key={r.id}
+                          className={`w-6 h-6 rounded-full bg-gradient-to-br ${kidGradient(i)} text-white text-[10px] font-bold flex items-center justify-center ring-1 ring-white`}
+                        >
+                          {r.name.charAt(0)}
+                        </span>
+                      ))}
+                    </span>
+                    <span className="text-sm font-medium">Everyone</span>
                   </button>
-                  {roster.map((r) => (
+                  {roster.map((r, i) => (
                     <button
                       key={r.id}
                       onClick={() => setSelectedKidId(r.id)}
-                      className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                      className={`flex items-center gap-2 rounded-full pl-1.5 pr-3.5 py-1.5 transition-all ${
                         selectedKidId === r.id
-                          ? "bg-rust text-white"
-                          : "bg-white border border-sand-dark/50 text-warm-gray"
+                          ? `bg-white border-2 ${kidBorder(i)} shadow-sm`
+                          : "bg-white border border-sand-dark/60 opacity-70 hover:opacity-100"
                       }`}
                     >
-                      {r.name}
+                      <span
+                        className={`w-7 h-7 rounded-full bg-gradient-to-br ${kidGradient(i)} text-white text-xs font-bold flex items-center justify-center font-[family-name:var(--font-display)]`}
+                      >
+                        {r.name.charAt(0)}
+                      </span>
+                      <span className="text-sm font-semibold text-espresso">
+                        {r.name}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -567,6 +590,50 @@ export function CaptureFlow({
                 {error}
               </div>
             )}
+
+            {/* Unmissable scope: whose moment is this? Tap to change. */}
+            {ctx === "parent" && (
+              <button
+                onClick={() => setStep("ready")}
+                className={`w-full flex items-center gap-2.5 mb-3 bg-white rounded-2xl pl-2 pr-3.5 py-2 border-2 ${
+                  selectedKid ? kidBorder(selectedKidIndex) : "border-sand-dark/60"
+                } shadow-sm transition-all hover:shadow-md`}
+              >
+                {selectedKid ? (
+                  <>
+                    <span
+                      className={`w-9 h-9 rounded-full bg-gradient-to-br ${kidGradient(selectedKidIndex)} text-white text-sm font-bold flex items-center justify-center font-[family-name:var(--font-display)] shrink-0`}
+                    >
+                      {selectedKid.name.charAt(0)}
+                    </span>
+                    <span className="text-sm text-espresso">
+                      A moment about{" "}
+                      <span className="font-semibold">{selectedKid.name}</span>
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex -space-x-1.5 pl-1">
+                      {roster.slice(0, 3).map((r, i) => (
+                        <span
+                          key={r.id}
+                          className={`w-7 h-7 rounded-full bg-gradient-to-br ${kidGradient(i)} text-white text-[11px] font-bold flex items-center justify-center ring-2 ring-white`}
+                        >
+                          {r.name.charAt(0)}
+                        </span>
+                      ))}
+                    </span>
+                    <span className="text-sm text-espresso">
+                      About <span className="font-semibold">{childNames}</span>
+                    </span>
+                  </>
+                )}
+                <span className="ml-auto text-[11px] text-warm-gray underline underline-offset-2 shrink-0">
+                  change
+                </span>
+              </button>
+            )}
+
             <ComposeBox
               value={transcript}
               onChange={setTranscript}
@@ -577,6 +644,9 @@ export function CaptureFlow({
               }
               minHeight="180px"
               autoFocus
+              borderClass={
+                selectedKid ? kidBorder(selectedKidIndex) : "border-sand-dark"
+              }
             />
             <div className="mt-3 mb-5">{starterPills}</div>
 
