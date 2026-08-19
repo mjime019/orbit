@@ -224,7 +224,7 @@ export function ObservationFlow({
                   Orbit
                 </span>
               </div>
-              <h1 className="font-[family-name:var(--font-playfair)] text-[26px] font-semibold leading-tight text-espresso">
+              <h1 className="font-[family-name:var(--font-display)] text-[26px] font-semibold leading-tight text-espresso">
                 Capture Observation
               </h1>
               <p className="text-sm text-warm-gray mt-1">
@@ -266,7 +266,7 @@ export function ObservationFlow({
                   onClick={() => selectChild(child)}
                   className={`fade-up delay-${Math.min(i + 1, 6)} flex flex-col items-center gap-2 p-4 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all active:scale-95`}
                 >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-rust to-[#47B3FF] text-white text-lg font-bold flex items-center justify-center font-[family-name:var(--font-playfair)]">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-rust to-[#47B3FF] text-white text-lg font-bold flex items-center justify-center font-[family-name:var(--font-display)]">
                     {child.name.charAt(0)}
                   </div>
                   <span className="text-xs font-semibold text-espresso">
@@ -297,11 +297,11 @@ export function ObservationFlow({
             >
               &larr;
             </button>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rust to-[#47B3FF] text-white text-sm font-bold flex items-center justify-center font-[family-name:var(--font-playfair)]">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rust to-[#47B3FF] text-white text-sm font-bold flex items-center justify-center font-[family-name:var(--font-display)]">
               {selectedChild?.name.charAt(0)}
             </div>
             <div className="flex-1">
-              <h2 className="font-[family-name:var(--font-playfair)] text-lg font-semibold text-espresso">
+              <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold text-espresso">
                 {selectedChild?.name}
               </h2>
               {classroomTheme && (
@@ -374,7 +374,7 @@ export function ObservationFlow({
           <button
             onClick={handleCapture}
             disabled={!liveNote.trim() || isExtracting}
-            className="fade-up delay-2 mt-4 w-full py-4 rounded-2xl font-semibold text-white transition-all disabled:opacity-40 bg-rust hover:bg-rust/90 active:scale-[0.98]"
+            className="fade-up delay-2 mt-4 w-full py-4 rounded-2xl font-semibold text-white transition-all disabled:opacity-40 bg-rust hover:bg-rust-deep active:scale-[0.98]"
           >
             {isExtracting ? (
               <span className="flex items-center justify-center gap-2">
@@ -403,7 +403,7 @@ export function ObservationFlow({
             &larr;
           </button>
           <div className="flex-1">
-            <h2 className="font-[family-name:var(--font-playfair)] text-lg font-semibold text-espresso">
+            <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold text-espresso">
               Review Observation
             </h2>
             <p className="text-xs text-warm-gray">{selectedChild?.name}</p>
@@ -527,7 +527,7 @@ export function ObservationFlow({
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="fade-up delay-6 w-full py-4 rounded-2xl font-semibold text-white transition-all disabled:opacity-40 bg-rust hover:bg-rust/90 active:scale-[0.98]"
+          className="fade-up delay-6 w-full py-4 rounded-2xl font-semibold text-white transition-all disabled:opacity-40 bg-rust hover:bg-rust-deep active:scale-[0.98]"
         >
           {isSaving ? (
             <span className="flex items-center justify-center gap-2">

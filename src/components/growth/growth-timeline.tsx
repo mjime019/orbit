@@ -30,7 +30,7 @@ export function GrowthTimeline({ chapters, childName }: Props) {
     <div>
       <div className="flex items-center gap-2 mb-4">
         <span className="text-base">📖</span>
-        <span className="font-[family-name:var(--font-playfair)] text-lg font-bold text-espresso">
+        <span className="font-[family-name:var(--font-display)] text-lg font-bold text-espresso">
           The Chapters
         </span>
       </div>
@@ -89,7 +89,7 @@ export function GrowthTimeline({ chapters, childName }: Props) {
                       )}
                     </div>
                     <h3
-                      className={`font-[family-name:var(--font-playfair)] font-semibold text-espresso leading-tight transition-all ${
+                      className={`font-[family-name:var(--font-display)] font-semibold text-espresso leading-tight transition-all ${
                         isOpen ? "text-xl" : "text-base"
                       }`}
                     >
@@ -226,7 +226,7 @@ export function GrowthTimeline({ chapters, childName }: Props) {
       <div className="mt-4 p-5 rounded-2xl bg-gradient-to-br from-rust/8 via-white to-sage/8 border border-sand-dark/30">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xl">🎓</span>
-          <span className="font-[family-name:var(--font-playfair)] text-base font-semibold text-espresso">
+          <span className="font-[family-name:var(--font-display)] text-base font-semibold text-espresso">
             Looking Ahead
           </span>
         </div>

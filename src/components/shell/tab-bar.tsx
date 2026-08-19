@@ -37,7 +37,7 @@ export function TabBar() {
                 key={tab.href}
                 href={tab.href}
                 aria-label="Capture a moment"
-                className="relative -top-4 w-14 h-14 rounded-full bg-rust text-white flex items-center justify-center shadow-lg hover:bg-rust/90 active:scale-95 transition-all"
+                className="relative -top-4 w-14 h-14 rounded-full bg-rust text-white flex items-center justify-center shadow-lg hover:bg-rust-deep active:scale-95 transition-all"
               >
                 {/* Pencil — capture is type-or-dictate now, not mic-first. */}
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">

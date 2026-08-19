@@ -119,7 +119,7 @@ export function ActivitiesTab({
       {!adding ? (
         <button
           onClick={() => setAdding(true)}
-          className="w-full mb-4 py-3 bg-rust text-white rounded-2xl text-sm font-medium shadow-sm hover:bg-rust/90 active:scale-[0.99] transition-all"
+          className="w-full mb-4 py-3 bg-rust text-white rounded-2xl text-sm font-medium shadow-sm hover:bg-rust-deep active:scale-[0.99] transition-all"
         >
           + Add an activity
         </button>

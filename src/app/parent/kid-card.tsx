@@ -48,19 +48,21 @@ export function KidCard({
   return (
     <Link
       href={`/parent/kid/${id}`}
-      className="block bg-white rounded-2xl p-4 shadow-sm border border-sand-dark/40 hover:shadow-md active:scale-[0.99] transition-all"
+      // min-w-0: as a grid item the card must be allowed to shrink, or the
+      // truncated footer text sizes the whole track to its full width.
+      className="block min-w-0 bg-white rounded-2xl p-4 shadow-sm border border-sand-dark/40 hover:shadow-md active:scale-[0.99] transition-all"
     >
       <div className="flex items-center gap-3">
         <span
           className={`w-11 h-11 rounded-full bg-gradient-to-br ${
             AVATAR_GRADIENTS[index % AVATAR_GRADIENTS.length]
-          } text-white text-base font-bold flex items-center justify-center font-[family-name:var(--font-playfair)] shrink-0`}
+          } text-white text-base font-bold flex items-center justify-center font-[family-name:var(--font-display)] shrink-0`}
         >
           {name.charAt(0)}
         </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2">
-            <span className="font-[family-name:var(--font-playfair)] text-lg font-semibold text-espresso">
+            <span className="font-[family-name:var(--font-display)] text-lg font-semibold text-espresso">
               {name}
             </span>
             <span className="text-[11px] text-warm-gray font-medium">

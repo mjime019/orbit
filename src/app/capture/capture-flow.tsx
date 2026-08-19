@@ -447,7 +447,7 @@ export function CaptureFlow({
     <div className="min-h-screen bg-cream">
       <div className="max-w-[640px] mx-auto px-5 py-8 pb-24">
         <header className="text-center mb-6">
-          <h1 className="font-[family-name:var(--font-playfair)] text-2xl font-semibold text-espresso">
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-semibold text-espresso">
             {ctx === "teacher" ? "Day Capture" : "Capture a Moment"}
           </h1>
           <p className="text-warm-gray text-sm mt-1">
@@ -543,7 +543,7 @@ export function CaptureFlow({
                 setStep("compose");
               }}
               disabled={roster.length === 0}
-              className="w-full py-4 bg-rust text-white rounded-2xl text-base font-semibold shadow-md hover:bg-rust/90 active:scale-[0.99] transition-all disabled:opacity-40 disabled:pointer-events-none"
+              className="w-full py-4 bg-rust text-white rounded-2xl text-base font-semibold shadow-md hover:bg-rust-deep active:scale-[0.99] transition-all disabled:opacity-40 disabled:pointer-events-none"
             >
               ✏️ Capture a moment
             </button>
@@ -584,7 +584,7 @@ export function CaptureFlow({
               <button
                 onClick={handleSubmitTranscript}
                 disabled={!transcript.trim()}
-                className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust/90 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
+                className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust-deep active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
               >
                 Looks good — submit
               </button>
@@ -657,7 +657,7 @@ export function CaptureFlow({
               <button
                 onClick={handleSubmitFollowupResponse}
                 disabled={!followupText.trim()}
-                className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust/90 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
+                className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust-deep active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
               >
                 {currentFollowupIndex + 1 < followups.length ? "Next question" : "Finish"}
               </button>
@@ -821,7 +821,7 @@ export function CaptureFlow({
               <button
                 onClick={handleConfirm}
                 disabled={confirmableCards.length === 0}
-                className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust/90 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
+                className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust-deep active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
               >
                 Save {confirmableCards.length || ""} observation
                 {confirmableCards.length === 1 ? "" : "s"}
@@ -841,7 +841,7 @@ export function CaptureFlow({
           <div className="fade-up">
             <div className="text-center py-12">
               <span className="text-4xl">🙏</span>
-              <h2 className="font-[family-name:var(--font-playfair)] text-xl font-semibold text-espresso mt-4">
+              <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold text-espresso mt-4">
                 Saved!
               </h2>
               <p className="text-sm text-warm-gray mt-2">
@@ -853,7 +853,7 @@ export function CaptureFlow({
             <div className="flex flex-col items-center gap-3 pt-4">
               <Link
                 href={homeHref}
-                className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust/90 active:scale-95 transition-all"
+                className="px-8 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust-deep active:scale-95 transition-all"
               >
                 {ctx === "parent" ? "See it on the home page" : "Back to dashboard"}
               </Link>

@@ -56,7 +56,7 @@ export default async function TeacherDashboardPage() {
               ORBIT TEACHER
             </span>
           </div>
-          <h1 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-espresso">
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold text-espresso">
             {familyGreeting()}, Teacher
           </h1>
           <p className="text-warm-gray text-sm mt-0.5">
@@ -69,7 +69,7 @@ export default async function TeacherDashboardPage() {
         <div className="bg-white rounded-2xl shadow-sm p-5 mb-4">
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="py-3 rounded-xl bg-cream">
-              <p className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-espresso">
+              <p className="font-[family-name:var(--font-display)] text-2xl font-bold text-espresso">
                 {todayCount}
               </p>
               <p className="text-[10px] font-semibold text-warm-gray uppercase tracking-wide mt-0.5">
@@ -77,7 +77,7 @@ export default async function TeacherDashboardPage() {
               </p>
             </div>
             <div className="py-3 rounded-xl bg-cream">
-              <p className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-espresso">
+              <p className="font-[family-name:var(--font-display)] text-2xl font-bold text-espresso">
                 {roster.length}
               </p>
               <p className="text-[10px] font-semibold text-warm-gray uppercase tracking-wide mt-0.5">
@@ -85,7 +85,7 @@ export default async function TeacherDashboardPage() {
               </p>
             </div>
             <div className="py-3 rounded-xl bg-cream">
-              <p className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-sage">
+              <p className="font-[family-name:var(--font-display)] text-2xl font-bold text-sage">
                 ✓
               </p>
               <p className="text-[10px] font-semibold text-warm-gray uppercase tracking-wide mt-0.5">
@@ -98,12 +98,12 @@ export default async function TeacherDashboardPage() {
         {/* Quick Actions */}
         <Link
           href="/capture?ctx=teacher"
-          className="block bg-rust rounded-2xl shadow-sm p-5 mb-3 hover:bg-rust/90 transition-colors"
+          className="block bg-rust rounded-2xl shadow-sm p-5 mb-3 hover:bg-rust-deep transition-colors"
         >
           <div className="flex items-center gap-4">
             <span className="text-2xl">🎤</span>
             <div>
-              <h3 className="font-[family-name:var(--font-playfair)] text-base font-bold text-white">
+              <h3 className="font-[family-name:var(--font-display)] text-base font-bold text-white">
                 End-of-day voice capture
               </h3>
               <p className="text-[11px] text-white/80 mt-0.5 leading-relaxed">
@@ -118,7 +118,7 @@ export default async function TeacherDashboardPage() {
             className="bg-white rounded-2xl shadow-sm p-5 hover:shadow-md transition-shadow group"
           >
             <div className="text-2xl mb-2">📝</div>
-            <h3 className="font-[family-name:var(--font-playfair)] text-base font-bold text-espresso group-hover:text-rust transition-colors">
+            <h3 className="font-[family-name:var(--font-display)] text-base font-bold text-espresso group-hover:text-rust transition-colors">
               Observe
             </h3>
             <p className="text-[11px] text-warm-gray mt-1 leading-relaxed">
@@ -130,7 +130,7 @@ export default async function TeacherDashboardPage() {
             className="bg-white rounded-2xl shadow-sm p-5 hover:shadow-md transition-shadow group"
           >
             <div className="text-2xl mb-2">✨</div>
-            <h3 className="font-[family-name:var(--font-playfair)] text-base font-bold text-espresso group-hover:text-rust transition-colors">
+            <h3 className="font-[family-name:var(--font-display)] text-base font-bold text-espresso group-hover:text-rust transition-colors">
               Content Engine
             </h3>
             <p className="text-[11px] text-warm-gray mt-1 leading-relaxed">

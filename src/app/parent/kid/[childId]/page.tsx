@@ -103,7 +103,7 @@ export default async function KidPage({
           ←
         </Link>
         <div className="flex-1">
-          <h1 className="font-[family-name:var(--font-playfair)] text-xl font-semibold text-espresso leading-tight">
+          <h1 className="font-[family-name:var(--font-display)] text-xl font-semibold text-espresso leading-tight">
             {child.name}
           </h1>
           <p className="text-xs text-warm-gray">{formatAge(child.date_of_birth)} old</p>

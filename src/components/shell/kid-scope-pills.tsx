@@ -51,7 +51,7 @@ export function KidScopePills({
             <span
               className={`w-7 h-7 rounded-full bg-gradient-to-br ${
                 AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length]
-              } text-white text-xs font-bold flex items-center justify-center font-[family-name:var(--font-playfair)]`}
+              } text-white text-xs font-bold flex items-center justify-center font-[family-name:var(--font-display)]`}
             >
               {kid.name.charAt(0)}
             </span>

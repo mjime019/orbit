@@ -41,7 +41,7 @@ export default async function ParentHomePage() {
     <div className="fade-up">
       <PulseRefresher kidIds={kidsNeedingPulse} />
       <div className="mb-4">
-        <h1 className="font-[family-name:var(--font-playfair)] text-[22px] leading-tight font-semibold text-espresso">
+        <h1 className="font-[family-name:var(--font-display)] text-[22px] leading-tight font-semibold text-espresso">
           {familyGreeting()}, {displayName}
         </h1>
         <p className="text-sm text-warm-gray mt-0.5">
@@ -55,7 +55,7 @@ export default async function ParentHomePage() {
 
       <Link
         href="/capture"
-        className="block mb-5 py-4 bg-rust text-white rounded-2xl text-base font-semibold text-center shadow-md hover:bg-rust/90 active:scale-[0.99] transition-all"
+        className="block mb-5 py-4 bg-rust text-white rounded-2xl text-base font-semibold text-center shadow-md hover:bg-rust-deep active:scale-[0.99] transition-all"
       >
         ✏️ Capture a moment
       </Link>

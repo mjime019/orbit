@@ -52,7 +52,7 @@ export function SummaryCard({
         💡 What we&apos;ve been observing
       </p>
       {content ? (
-        <p className="text-[15px] text-espresso leading-relaxed font-[family-name:var(--font-chat)]">
+        <p className="text-[15px] text-espresso leading-relaxed font-[family-name:var(--font-display)]">
           {content}
         </p>
       ) : loading ? (

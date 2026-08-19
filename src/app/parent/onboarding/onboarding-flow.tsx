@@ -206,7 +206,7 @@ export function OnboardingFlow({
     return (
       <div className="fade-up text-center pt-6">
         <div className="text-5xl mb-4">🌱</div>
-        <h1 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-espresso mb-2">
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold text-espresso mb-2">
           {isRefresh
             ? `What's changed with ${childName}?`
             : `Seed ${childName}'s file`}
@@ -230,7 +230,7 @@ export function OnboardingFlow({
             setInput(responses.get(prompts[0].key)?.rawResponse ?? "");
             setScreen("questions");
           }}
-          className="bg-rust text-white font-semibold px-8 py-3.5 rounded-xl text-base hover:bg-rust/90 transition-colors shadow-sm"
+          className="bg-rust text-white font-semibold px-8 py-3.5 rounded-xl text-base hover:bg-rust-deep transition-colors shadow-sm"
         >
           Let&apos;s go
         </button>
@@ -277,7 +277,7 @@ export function OnboardingFlow({
           </button>
         </div>
 
-        <h2 className="font-[family-name:var(--font-playfair)] text-xl font-semibold text-espresso leading-snug mb-1">
+        <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold text-espresso leading-snug mb-1">
           {prompt.question(childName)}
         </h2>
         {prompt.subtext && (
@@ -322,7 +322,7 @@ export function OnboardingFlow({
         <button
           onClick={submitAnswer}
           disabled={!liveInput.trim() || extracting}
-          className="mt-4 w-full py-3.5 rounded-2xl font-semibold text-white transition-all disabled:opacity-40 bg-rust hover:bg-rust/90 active:scale-[0.99]"
+          className="mt-4 w-full py-3.5 rounded-2xl font-semibold text-white transition-all disabled:opacity-40 bg-rust hover:bg-rust-deep active:scale-[0.99]"
         >
           {extracting ? (
             <span className="flex items-center justify-center gap-2">
@@ -371,7 +371,7 @@ export function OnboardingFlow({
             <div className="flex gap-3">
               <button
                 onClick={finish}
-                className="px-6 py-2.5 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust/90"
+                className="px-6 py-2.5 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust-deep"
               >
                 Retry
               </button>
@@ -425,7 +425,7 @@ export function OnboardingFlow({
 
     return (
       <div className="fade-up">
-        <h2 className="font-[family-name:var(--font-playfair)] text-xl font-semibold text-espresso mb-1">
+        <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold text-espresso mb-1">
           {isRefresh
             ? `${childName}'s file, refreshed`
             : `${childName}'s file, seeded`}
@@ -468,7 +468,7 @@ export function OnboardingFlow({
         </div>
         <button
           onClick={() => setScreen("done")}
-          className="mt-5 w-full py-3.5 rounded-2xl font-semibold text-white bg-rust hover:bg-rust/90 transition-all"
+          className="mt-5 w-full py-3.5 rounded-2xl font-semibold text-white bg-rust hover:bg-rust-deep transition-all"
         >
           Looks right
         </button>
@@ -480,7 +480,7 @@ export function OnboardingFlow({
   return (
     <div className="fade-up text-center pt-10">
       <div className="text-5xl mb-4">🙏</div>
-      <h2 className="font-[family-name:var(--font-playfair)] text-xl font-semibold text-espresso mb-2">
+      <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold text-espresso mb-2">
         {childName}&apos;s file is growing
       </h2>
       <p className="text-sm text-warm-gray max-w-[320px] mx-auto leading-relaxed mb-6">
@@ -490,7 +490,7 @@ export function OnboardingFlow({
       <div className="flex flex-col items-center gap-3">
         <Link
           href={`/parent/kid/${childId}?tab=about`}
-          className="px-6 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust/90"
+          className="px-6 py-3 bg-rust text-white rounded-full text-sm font-medium shadow-md hover:bg-rust-deep"
         >
           See {childName}&apos;s file
         </Link>

@@ -1,42 +1,63 @@
 @import "tailwindcss";
 
+/* Orbit Design System tokens (claude.ai/design "Orbit Design System",
+   tokens/*.css) — cool, calm, editorial. A keepsake, not a dashboard.
+   Cool porcelain paper, slate-blue ink, single cobalt accent; supporting
+   hues muted (brass = attention, sage = on-track, sky = info, rose = rare
+   caution). Legacy token NAMES kept so every existing class re-skins. */
 @theme inline {
-  /* Page backgrounds */
-  --color-cream: #FFFFFF;
-  --color-sand: #F5F5F5;
-  --color-sand-dark: #E0E0E0;
+  /* Surfaces — porcelain canvas, cool-white cards */
+  --color-white: #FBFCFC;      /* card surface (paper-raised) */
+  --color-cream: #F3F5F6;      /* app canvas (paper) */
+  --color-sand: #EDF0F1;       /* sunken wells (stone-50) */
+  --color-sand-dark: #D7DDE0;  /* hairline borders (stone-200) */
 
-  /* Text */
-  --color-warm-gray: #6B7280;
-  --color-espresso: #1A1A2E;
+  /* Ink */
+  --color-warm-gray: #566670;  /* secondary text (ink-500) */
+  --color-espresso: #1C2429;   /* primary text (ink-900) */
 
-  /* Accents */
-  --color-rust: #0090F3;
-  --color-sage: #22C55E;
-  --color-sky: #0090F3;
-  --color-golden: #DEE51F;
+  /* Accent — cobalt, the one brand accent */
+  --color-rust: #2F6E95;       /* accent (cobalt-500) */
+  --color-rust-deep: #275C7F;  /* hover / press (cobalt-600) */
+  --color-sage: #568975;       /* success / on-track */
+  --color-sky: #527C99;        /* info / calm note */
+  --color-golden: #B58A46;     /* attention / highlight (brass) */
+  --color-lavender: #B4CDDD;   /* accent surfaces (cobalt-200 tint) */
 
-  /* New brand accents */
-  --color-lavender: #C9B8F8;
+  /* Domain colors — restated as cool tints (100-tint bg, 600 text) */
+  --color-domain-language-bg: #D6E4EC;
+  --color-domain-language-text: #3F6480;
+  --color-domain-motor-bg: #D6E6E0;
+  --color-domain-motor-text: #45705F;
+  --color-domain-social-bg: #D3E3EC;
+  --color-domain-social-text: #1F4C6B;
+  --color-domain-cognitive-bg: #EBE2CE;
+  --color-domain-cognitive-text: #8E6C2E;
+  --color-domain-creative-bg: #E9D6D9;
+  --color-domain-creative-text: #92494F;
+  --color-domain-sel-bg: #E6DEF3;
+  --color-domain-sel-text: #6B4FA0;
 
-  /* Domain colors */
-  --color-domain-language-bg: #E8F4FD;
-  --color-domain-language-text: #0068B0;
-  --color-domain-motor-bg: #E8F5E9;
-  --color-domain-motor-text: #1B7D2E;
-  --color-domain-social-bg: #EDE7F6;
-  --color-domain-social-text: #6B4FA0;
-  --color-domain-cognitive-bg: #FFF8E1;
-  --color-domain-cognitive-text: #9E8600;
-  --color-domain-creative-bg: #FCE4EC;
-  --color-domain-creative-text: #C62828;
-  --color-domain-sel-bg: #F3E5F5;
-  --color-domain-sel-text: #7B1FA2;
+  /* Corners — soft keepsake radii (cards 18, inputs 14, small 10) */
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
 
-  /* Fonts */
-  --font-display: var(--font-playfair);
-  --font-body: var(--font-dm-sans);
-  --font-chat: var(--font-source-serif);
+  /* Shadows — low, diffuse, cool (slate-tinted, never black) */
+  --shadow-xs: 0 1px 2px rgba(28, 36, 44, 0.06);
+  --shadow-sm: 0 1px 2px rgba(28, 36, 44, 0.05), 0 4px 12px rgba(28, 36, 44, 0.05);
+  --shadow-md: 0 2px 6px rgba(28, 36, 44, 0.06), 0 14px 30px rgba(28, 36, 44, 0.08);
+  --shadow-lg: 0 6px 16px rgba(28, 36, 44, 0.08), 0 24px 48px rgba(28, 36, 44, 0.12);
+
+}
+
+/* Font roles (--font-display Newsreader, --font-body Hanken Grotesk,
+   --font-meta Spline Sans Mono) are emitted by next/font in layout.tsx —
+   CSS alias layers referencing them get stripped by the build. */
+:root {
+  /* The Orbit gradient (from the mark) — logo, milestones, celebration
+     only. Never a page background, never behind text. */
+  --gradient-orbit: linear-gradient(120deg, #3E97DE 0%, #B097D6 52%, #C4D24C 100%);
 }
 
 body {
@@ -54,7 +75,7 @@ body {
   border-radius: 3px;
 }
 
-/* Fade-up animation */
+/* Fade-up animation — gentle, no bounce */
 @keyframes fadeUp {
   from {
     opacity: 0;
@@ -67,7 +88,7 @@ body {
 }
 
 .fade-up {
-  animation: fadeUp 0.5s ease forwards;
+  animation: fadeUp 0.34s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   opacity: 0;
 }
 
@@ -96,4 +117,9 @@ body {
 
 .recording-pulse {
   animation: recordingPulse 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up { animation-duration: 0.01s; }
+  .typing-dot, .recording-pulse { animation: none; }
 }

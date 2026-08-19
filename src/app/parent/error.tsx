@@ -20,7 +20,7 @@ export default function ParentError({
       </p>
       <button
         onClick={reset}
-        className="mt-4 px-5 py-2.5 bg-rust text-white rounded-full text-xs font-medium shadow-sm hover:bg-rust/90 active:scale-95 transition-all"
+        className="mt-4 px-5 py-2.5 bg-rust text-white rounded-full text-xs font-medium shadow-sm hover:bg-rust-deep active:scale-95 transition-all"
       >
         Try again
       </button>

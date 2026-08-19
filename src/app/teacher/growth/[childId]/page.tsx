@@ -35,7 +35,7 @@ export default async function GrowthJourneyPage({
             {"\u2190"}
           </Link>
           <div>
-            <h1 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-espresso">
+            <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold text-espresso">
               📖 {child.name}&apos;s Journey
             </h1>
             <p className="text-warm-gray text-sm">
@@ -51,7 +51,7 @@ export default async function GrowthJourneyPage({
               {child.name.charAt(0)}
             </div>
             <div>
-              <p className="font-[family-name:var(--font-playfair)] text-lg font-bold text-espresso">
+              <p className="font-[family-name:var(--font-display)] text-lg font-bold text-espresso">
                 {child.name}&apos;s Journey
               </p>
               <p className="text-[11px] text-warm-gray">
@@ -76,7 +76,7 @@ export default async function GrowthJourneyPage({
             ].map((s) => (
               <div key={s.u} className="text-center py-2.5 rounded-xl bg-cream">
                 <p className="text-sm mb-0.5">{s.i}</p>
-                <p className="font-[family-name:var(--font-playfair)] text-lg font-bold text-espresso leading-none">
+                <p className="font-[family-name:var(--font-display)] text-lg font-bold text-espresso leading-none">
                   {s.v}
                 </p>
                 <p className="text-[9px] font-semibold text-warm-gray uppercase tracking-wider mt-1">

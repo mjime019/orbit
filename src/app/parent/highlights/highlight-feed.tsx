@@ -118,7 +118,7 @@ function HighlightCard({
 
         {/* Title */}
         {h.title && (
-          <h3 className="font-[family-name:var(--font-playfair)] text-lg font-bold text-espresso leading-tight mb-2">
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-bold text-espresso leading-tight mb-2">
             {h.title}
           </h3>
         )}

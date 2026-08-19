@@ -129,7 +129,7 @@ export function ConciergeChat({
           {messages.length === 0 && (
             <div className="text-center py-8 fade-up">
               <div className="text-4xl mb-3">{"\u{1F30D}"}</div>
-              <h2 className="font-[family-name:var(--font-playfair)] text-xl font-bold text-espresso mb-2">
+              <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-espresso mb-2">
                 Ask me anything about {childName}
               </h2>
               <p className="text-warm-gray text-sm max-w-[320px] mx-auto">
@@ -155,7 +155,7 @@ export function ConciergeChat({
                 }`}
               >
                 <p
-                  className={`text-sm leading-relaxed whitespace-pre-line font-[family-name:var(--font-source-serif)]`}
+                  className={`text-sm leading-relaxed whitespace-pre-line font-[family-name:var(--font-display)]`}
                 >
                   {msg.content}
                 </p>
@@ -229,14 +229,14 @@ export function ConciergeChat({
             onKeyDown={handleKeyDown}
             placeholder={`Ask about ${childName}...`}
             rows={1}
-            className="flex-1 bg-cream border border-sand-dark rounded-xl px-4 py-2.5 text-espresso text-sm placeholder:text-warm-gray/50 focus:outline-none focus:ring-2 focus:ring-rust/20 focus:border-rust/40 resize-none leading-relaxed font-[family-name:var(--font-source-serif)]"
+            className="flex-1 bg-cream border border-sand-dark rounded-xl px-4 py-2.5 text-espresso text-sm placeholder:text-warm-gray/50 focus:outline-none focus:ring-2 focus:ring-rust/20 focus:border-rust/40 resize-none leading-relaxed font-[family-name:var(--font-display)]"
           />
           <button
             onClick={() => sendMessage(inputValue)}
             disabled={!inputValue.trim() || isTyping}
             className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
               inputValue.trim() && !isTyping
-                ? "bg-rust text-white hover:bg-rust/90"
+                ? "bg-rust text-white hover:bg-rust-deep"
                 : "bg-sand-dark text-warm-gray/50"
             }`}
           >

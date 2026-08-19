@@ -67,6 +67,28 @@ Key judgment call: ROADMAP.md's "Phase 1–3 COMPLETE ✅" was scored against ac
 
 ## Changelog
 
+- **Aug 19, 2026 — Design system applied (main).** The app's skin now comes
+  from the claude.ai/design "Orbit Design System" project (tokens/*.css):
+  cool porcelain canvas (#F3F5F6), cool-white cards (#FBFCFC via --color-white
+  override), slate-ink text (#1C2429/#566670), ONE cobalt accent (#2F6E95,
+  hover #275C7F = `rust-deep`), muted brass/sage/sky support, cool-tint
+  domain colors, 18px cards / 14px inputs, slate-tinted shadows. Fonts:
+  Newsreader (display + chat/personal), Hanken Grotesk (body/UI), Spline
+  Sans Mono (meta; loaded, lightly used) — next/font emits the semantic vars
+  (--font-display/--font-body/--font-meta) DIRECTLY; CSS alias layers
+  referencing next/font vars get stripped by the build (Lightning CSS), so
+  never alias them in globals.css (this also silently broke the old
+  --font-body alias — body text was always system sans before this).
+  Legacy token NAMES (cream/sand/espresso/rust/…) kept so all existing
+  classes reskin; wordmark is lowercase Newsreader "orbit" with the orbit
+  gradient quarantined to the mark dot. The design project's ui_kits are a
+  pre-pivot first-principles proposal — reference only, not the app's IA.
+  Also fixed: kid-card grid item missing min-w-0 (truncated footer text
+  blew the mobile grid track to 5600px+ since the R4 grid change).
+  Open brand question for Miguel: the system says "no emoji — Phosphor
+  icons"; the app still uses emoji-as-icons everywhere (deliberate
+  deviation until he decides).
+
 - **Aug 17, 2026 — Round 4 (main).** No SQL this round. **Keep-alive:**
   `/api/health` (proxy-exempt, trivial head-count select) + daily Vercel
   cron in `vercel.json` — the Supabase free tier had paused the project

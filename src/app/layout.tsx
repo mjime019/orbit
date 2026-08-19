@@ -1,23 +1,29 @@
 import type { Metadata } from "next";
-import { Playfair_Display, DM_Sans, Source_Serif_4 } from "next/font/google";
+import { Newsreader, Hanken_Grotesk, Spline_Sans_Mono } from "next/font/google";
 import "./globals.css";
 
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
+// Orbit Design System type: Newsreader (editorial serif — anything personal),
+// Hanken Grotesk (humanist sans — UI and body), Spline Sans Mono (timestamps
+// and tabular meta). Same families the design project self-hosts.
+// next/font emits the semantic variable names directly — alias layers in
+// CSS get stripped by the build (custom props referencing unknown vars).
+const newsreader = Newsreader({
+  variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
 });
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const hanken = Hanken_Grotesk({
+  variable: "--font-body",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 
-const sourceSerif = Source_Serif_4({
-  variable: "--font-source-serif",
+const splineMono = Spline_Sans_Mono({
+  variable: "--font-meta",
   subsets: ["latin"],
-  weight: ["400", "600"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -34,7 +40,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${playfair.variable} ${dmSans.variable} ${sourceSerif.variable} antialiased`}
+        className={`${newsreader.variable} ${hanken.variable} ${splineMono.variable} antialiased`}
       >
         {children}
       </body>

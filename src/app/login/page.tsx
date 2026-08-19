@@ -16,9 +16,12 @@ export default async function LoginPage() {
       <div className="w-full max-w-[360px] fade-up">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <span className="w-3 h-3 rounded-full bg-rust inline-block" />
-            <span className="font-[family-name:var(--font-playfair)] text-2xl font-semibold tracking-wide text-espresso">
-              ORBIT
+            <span
+              className="w-4 h-4 rounded-full inline-block"
+              style={{ background: "var(--gradient-orbit)" }}
+            />
+            <span className="font-[family-name:var(--font-display)] text-3xl font-medium text-espresso">
+              orbit
             </span>
           </div>
           <p className="text-sm text-warm-gray">The boys&apos; story, kept safe.</p>

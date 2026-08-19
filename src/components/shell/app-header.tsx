@@ -14,9 +14,13 @@ export function AppHeader() {
     <header className="sticky top-0 z-30 bg-cream/95 backdrop-blur border-b border-sand-dark/40">
       <div className="mx-auto max-w-[640px] lg:max-w-[1040px] px-6 py-3 flex items-center justify-between">
         <Link href="/parent" className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-rust inline-block" />
-          <span className="font-[family-name:var(--font-playfair)] font-semibold tracking-wide text-espresso">
-            ORBIT
+          {/* The orbit gradient lives on the mark only — never behind text. */}
+          <span
+            className="w-3 h-3 rounded-full inline-block"
+            style={{ background: "var(--gradient-orbit)" }}
+          />
+          <span className="font-[family-name:var(--font-display)] text-lg font-medium text-espresso">
+            orbit
           </span>
         </Link>
 
