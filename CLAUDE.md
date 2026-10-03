@@ -67,6 +67,28 @@ Key judgment call: ROADMAP.md's "Phase 1–3 COMPLETE ✅" was scored against ac
 
 ## Changelog
 
+- **Oct 3, 2026 — Model tiering (main).** Model choice now lives in
+  `src/lib/ai-models.ts` (`Record<PromptType, ModelTier>` — exhaustive, so
+  a new prompt type must pick a tier). **Fast tier** = Haiku 4.5 ($1/$5
+  per MTok): capture extraction, follow-ups, onboarding extraction, dormant
+  teacher/demo prompts — someone is waiting and output is schema-checked.
+  **Writer tier** = Sonnet 5.5 ($2/$10) at `effort: "low"`: summaries/
+  pulses, chapters, family chat, planners, report reading. Sonnet 5.5
+  specifics handled in `ai.ts`: thinking is always on and counts toward
+  `max_tokens` (so `max_tokens` = caller's visible budget + tier
+  `thinkingHeadroom`), effort is set explicitly (API default is `high`),
+  `output_config.effort` is NOT sent to Haiku (it 400s), responses are read
+  by block type, and `stop_reason: "refusal"` is checked. Safety net: any
+  writer-tier failure (refusal, model/param error, its separate rate-limit
+  pool) is served once by the fast tier — logged loudly, visible in
+  `AIResult.model`, never fabricated. Every call logs
+  `[AI] <promptType> model= in= out= stop=` (counts only) — the cost
+  measurement channel. Writer routes export `maxDuration = 60`. Not
+  adopted (deliberately): server-side `fallbacks` beta (for Sonnet 5.5 it
+  only retries cyber/frontier_llm declines — irrelevant here; the own
+  Haiku retry covers every category) and Opus 5.5 ($4/$20) for chapters
+  (revisit with measured need).
+
 - **Aug 19, 2026 — Design system applied (main).** The app's skin now comes
   from the claude.ai/design "Orbit Design System" project (tokens/*.css):
   cool porcelain canvas (#F3F5F6), cool-white cards (#FBFCFC via --color-white

@@ -11,6 +11,10 @@ import { buildFileContext } from "@/lib/file-context";
 import { getSessionProfile } from "@/lib/session";
 import { familyFormatDate } from "@/lib/tz";
 
+// Writer-tier model (Sonnet 5.5) thinks before answering — give the
+// function room beyond the platform default.
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   const { conversationId, childId, message } = await request.json();
 

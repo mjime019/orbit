@@ -12,6 +12,10 @@ import {
 import type { z } from "zod";
 import { formatAge } from "@/lib/age";
 
+// Writer-tier model (Sonnet 5.5) thinks before answering — give the
+// function room beyond the platform default.
+export const maxDuration = 60;
+
 const EXT_MEDIA: Record<string, string> = {
   pdf: "application/pdf",
   jpg: "image/jpeg",

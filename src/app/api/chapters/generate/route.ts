@@ -13,6 +13,10 @@ import { buildFileContext } from "@/lib/file-context";
 import { ageBand, formatAge } from "@/lib/age";
 import { familyFormatDate, familySeasonLabel } from "@/lib/tz";
 
+// Writer-tier model (Sonnet 5.5) thinks before answering — give the
+// function room beyond the platform default.
+export const maxDuration = 60;
+
 const MIN_NEW_OBSERVATIONS = 3;
 
 // "Write the next chapter": distills the observations since the last chapter

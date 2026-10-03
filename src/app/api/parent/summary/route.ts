@@ -8,6 +8,10 @@ import { buildFileContext } from "@/lib/file-context";
 import { formatAge } from "@/lib/age";
 import { familyFormatDate } from "@/lib/tz";
 
+// Writer-tier model (Sonnet 5.5) thinks before answering — give the
+// function room beyond the platform default.
+export const maxDuration = 60;
+
 // "What this means" summary for the child home page. Cached in
 // child_summaries and regenerated only when the observation set changes —
 // repeated loads cost zero AI calls.
