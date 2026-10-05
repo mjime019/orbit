@@ -67,6 +67,36 @@ Key judgment call: ROADMAP.md's "Phase 1–3 COMPLETE ✅" was scored against ac
 
 ## Changelog
 
+- **Oct 5, 2026 — Round 5: Rituals + long-term Goals (main).** Two new
+  kid-page tabs (`Story · Goals · Rituals · Activities · Reports · About`).
+  **Rituals** (`kid_rituals`): real responsibilities a kid owns, added as
+  he grows — the owner's inspiration is *Raising Mentally Strong Kids*; the
+  prompt states the approach in our own words (capability from being
+  needed, show-then-step-back, no nagging/rescuing/pay) and frames by age
+  band (a baby gets *participation* rituals, not expectations).
+  `suggested → active ("learning now") → mastered ("what he owns")`;
+  `/api/parent/kid/rituals` (GET/POST/PATCH) + `/rituals/suggest` (AI).
+  **Goals** (`kid_goals` + `goal_steps`): parents name a long-term goal;
+  `/goals/plan` (AI) writes an age-specific `approach` plus steps of three
+  kinds — `routine` (recurring), `activity` (one-off), `sign` (something
+  you'd notice; observed, never scored); `/goals/checkin` (AI) reads the
+  plan state against the last 60 days of observations and stores
+  `{note, evidence, nudge}` on the goal; `/goals/steps` (POST/PATCH),
+  `/goals` (GET/POST/PATCH/DELETE). **Review invariant holds:** everything
+  AI proposes lands as `status='suggested'` (dashed in the UI) until a
+  parent takes it on; regenerating replaces only `suggested` + `source='ai'`
+  rows; dismissed rows are kept so they aren't re-suggested.
+  `buildFileContext` gains two blocks (goals in the parents' words +
+  running routines; rituals owned/learning) built ONLY from parent-approved
+  rows — AI check-in notes are deliberately not fed back in. Three new
+  writer-tier prompt types (`ritual_suggestions`, `goal_plan`,
+  `goal_checkin`) with schemas, mocks and contract cases (40 tests).
+  Shared vocabulary in `src/lib/rituals-goals.ts`; ownership helpers in
+  `src/lib/kid-access.ts`. **Requires `scripts/pivot/09-rituals-goals.sql`**
+  (tabs show a "run the SQL" note until then; file-context skips the
+  blocks). No progress percentages anywhere by design — counts of what's
+  running/tried/seen, never a score of the kid.
+
 - **Oct 3, 2026 — Model tiering (main).** Model choice now lives in
   `src/lib/ai-models.ts` (`Record<PromptType, ModelTier>` — exhaustive, so
   a new prompt type must pick a tier). **Fast tier** = Haiku 4.5 ($1/$5

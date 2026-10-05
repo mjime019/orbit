@@ -62,6 +62,9 @@ const TIER_BY_PROMPT: Record<PromptType, ModelTier> = {
   planner_weekend: WRITER_TIER,
   planner_extracurricular: WRITER_TIER,
   report_ingestion: WRITER_TIER,
+  ritual_suggestions: WRITER_TIER,
+  goal_plan: WRITER_TIER,
+  goal_checkin: WRITER_TIER,
 };
 
 export function tierFor(promptType: PromptType): ModelTier {

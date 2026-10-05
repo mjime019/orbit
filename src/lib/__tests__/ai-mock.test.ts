@@ -16,6 +16,9 @@ import {
   buildChapterPrompt,
   buildPlannerPrompt,
   buildReportIngestionPrompt,
+  buildRitualSuggestionsPrompt,
+  buildGoalPlanPrompt,
+  buildGoalCheckinPrompt,
 } from "@/lib/prompts";
 import {
   parseAIResponse,
@@ -29,7 +32,11 @@ import {
   ChapterGenerationSchema,
   ReportIngestionSchema,
   PlannerIdeasSchema,
+  RitualSuggestionsSchema,
+  GoalPlanSchema,
+  GoalCheckinSchema,
 } from "@/lib/parse-ai";
+import { RITUAL_AREAS, STEP_KINDS } from "@/lib/rituals-goals";
 
 // The prompts↔mock↔schema contract: for every PromptType, the mock's output
 // for the REAL prompt built by prompts.ts must parse through the same schema
@@ -273,6 +280,73 @@ const CASES: Record<PromptType, JsonCase | TextCase> = {
     schema: ReportIngestionSchema,
     check: (parsed: z.output<typeof ReportIngestionSchema>) => {
       expect(parsed.summary).toContain("Rafael");
+    },
+  },
+  ritual_suggestions: {
+    kind: "json",
+    system: buildRitualSuggestionsPrompt({
+      childName: "Luca",
+      ageLabel: "4 yr",
+      ageBand: "preschool",
+      fileContext: "Interests: dinosaurs, painting",
+      onTheTable: [],
+      passedOn: ["Waters the plants"],
+      todayLabel: "Monday, October 5, 2026",
+    }),
+    user: "Suggest the next responsibilities now.",
+    schema: RitualSuggestionsSchema,
+    check: (parsed: z.output<typeof RitualSuggestionsSchema>) => {
+      for (const ritual of parsed) {
+        // The route drops empty titles; the mock must never produce one.
+        expect(ritual.title.length).toBeGreaterThan(0);
+        expect(RITUAL_AREAS).toContain(ritual.area);
+        expect(ritual.how_to_start).toBeTruthy();
+      }
+    },
+  },
+  goal_plan: {
+    kind: "json",
+    system: buildGoalPlanPrompt({
+      childName: "Mateo",
+      ageLabel: "5 yr",
+      goalTitle: "Swim confidently on his own",
+      goalWhy: "So the pool is fun, not scary.",
+      goalHorizon: "By next summer",
+      fileContext: "Interests: water play, dinosaurs",
+      inPlay: [],
+      passedOn: [],
+      todayLabel: "Monday, October 5, 2026",
+    }),
+    user: "Build the plan now.",
+    schema: GoalPlanSchema,
+    check: (parsed: z.output<typeof GoalPlanSchema>) => {
+      expect(parsed.approach).toContain("Mateo");
+      // A plan carries all three kinds: habits, things to try, signs to notice.
+      for (const kind of STEP_KINDS) {
+        expect(parsed.steps.some((s) => s.kind === kind)).toBe(true);
+      }
+      for (const step of parsed.steps) {
+        expect(step.title.length).toBeGreaterThan(0);
+      }
+    },
+  },
+  goal_checkin: {
+    kind: "json",
+    system: buildGoalCheckinPrompt({
+      childName: "Mateo",
+      ageLabel: "5 yr",
+      goalTitle: "Swim confidently on his own",
+      goalWhy: null,
+      goalHorizon: null,
+      startedLabel: "September 1, 2026",
+      planText: "[routine · running] Pool time (Saturday mornings)",
+      todayLabel: "Monday, October 5, 2026",
+    }),
+    user: OBSERVATIONS_TEXT,
+    schema: GoalCheckinSchema,
+    check: (parsed: z.output<typeof GoalCheckinSchema>) => {
+      expect(parsed.note).toContain("Mateo");
+      expect(Array.isArray(parsed.evidence)).toBe(true);
     },
   },
 };

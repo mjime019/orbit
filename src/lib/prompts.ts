@@ -17,7 +17,10 @@ export type PromptType =
   | "planner_activity"
   | "planner_weekend"
   | "planner_extracurricular"
-  | "report_ingestion";
+  | "report_ingestion"
+  | "ritual_suggestions"
+  | "goal_plan"
+  | "goal_checkin";
 
 export function buildObservationExtractionPrompt(context: {
   schoolName: string;
@@ -612,5 +615,166 @@ Return ONLY valid JSON (no markdown, no backticks):
   "emerging": string[],     // 2-3 things just beginning to show
   "friends": string[],
   "parent_note": string
+}`;
+}
+
+// ─── Rituals ──────────────────────────────────────────────────────
+// A ritual is a small, real responsibility a kid owns, added one at a time
+// as he grows. Suggestions are grounded in his age and his file; nothing
+// becomes "his" until a parent starts it.
+export function buildRitualSuggestionsPrompt(context: {
+  childName: string;
+  ageLabel: string;
+  ageBand: "infant" | "toddler" | "preschool" | "school-age";
+  fileContext: string;
+  onTheTable: string[];
+  passedOn: string[];
+  todayLabel: string;
+}): string {
+  const bandFraming: Record<string, string> = {
+    infant:
+      "He is a baby. Real responsibilities don't exist yet. Suggest 2-3 PARTICIPATION rituals — things done WITH him that plant the habit of taking part (dropping a toy in the bin together, holding his own spoon, \"helping\" wipe the tray). Say plainly in why_now that these are participation, not expectations.",
+    toddler:
+      "He is a toddler. Suggest tiny one-step jobs he can finish himself with a parent nearby. The win is \"I did it\", not the quality of the result.",
+    preschool:
+      "He is a preschooler. Suggest real daily jobs with a clear start and finish that he can fully own after being shown — plus first small decisions that are his to make.",
+    "school-age":
+      "He is school-age. Suggest jobs the family genuinely depends on, multi-step routines he runs without reminders, and decisions or problems that are his to own (his stuff, his time, his small money).",
+  };
+
+  return `You are Orbit's rituals guide. A ritual is a small, real responsibility a child owns — a job that genuinely helps the family or takes care of himself — added one at a time as he grows. Suggest the next responsibilities for ${context.childName} (${context.ageLabel} old).
+
+${bandFraming[context.ageBand]}
+
+THE APPROACH THESE PARENTS HAVE CHOSEN:
+- Capability comes from being needed: real contributions to the family, not make-work
+- He owns it: a parent shows it once or twice alongside him, then steps back — no nagging, no rescuing, no quietly redoing it behind him
+- Small misses are the teacher: when he forgets, the natural result does the talking, met with empathy instead of a lecture
+- One or two new things at a time, each winnable within a couple of weeks
+- Never tied to payment or prizes — it's simply what people in this family do
+
+${context.childName.toUpperCase()}'S FILE (includes what he already owns and what he's learning now):
+${context.fileContext}
+
+SUGGESTED LAST TIME (being replaced — offer different ones):
+${context.onTheTable.length > 0 ? context.onTheTable.map((t) => `- ${t}`).join("\n") : "Nothing yet."}
+
+ALREADY PASSED ON (don't re-suggest):
+${context.passedOn.length > 0 ? context.passedOn.map((t) => `- ${t}`).join("\n") : "Nothing yet."}
+
+TODAY: ${context.todayLabel}
+
+RULES:
+- Suggest 3-4 (2-3 for a baby). Build on what he already owns — the next rung, not a repeat
+- Anchor each in HIS file: his interests, his routines, his siblings, what's hard right now. If it could apply to any kid his age, sharpen it
+- Sized for a real family week — small beats impressive
+- Spread across areas where it fits; don't force it
+- No clinical language, no "should be able to by now", never a judgment of him
+- Return ONLY a valid JSON array (no markdown, no backticks)
+
+Each array item:
+{
+  "title": string,                 // short and concrete: "Feeds the dog breakfast"
+  "area": "self_care" | "home" | "belongings" | "family" | "choices",
+  "why_now": string,               // 1-2 sentences anchored in his age AND his file
+  "how_to_start": string,          // how to hand it over: show once, do it together, step back
+  "cadence": string,               // "every morning", "after dinner", "Saturdays"
+  "looks_like_owning_it": string   // what you'd SEE when it's truly his — observed, never graded
+}`;
+}
+
+// ─── Long-term goals ──────────────────────────────────────────────
+// Parents define the goal; Orbit turns it into ordinary family life
+// (routines, one-off things to try, signs to notice) and checks in against
+// captured moments. Progress is described, never scored.
+const GOAL_STEP_SHAPE = `{ "kind": "routine" | "activity" | "sign", "title": string, "detail": string, "cadence": string | null }`;
+
+export function buildGoalPlanPrompt(context: {
+  childName: string;
+  ageLabel: string;
+  goalTitle: string;
+  goalWhy: string | null;
+  goalHorizon: string | null;
+  fileContext: string;
+  inPlay: string[];
+  passedOn: string[];
+  todayLabel: string;
+}): string {
+  return `You are Orbit's long-game guide. Build a plan toward a long-term goal for ${context.childName} (${context.ageLabel} old) — one his parents chose, turned into ordinary family life.
+
+THE GOAL: "${context.goalTitle}"
+WHY IT MATTERS TO THEM: ${context.goalWhy || "Not stated."}
+HORIZON: ${context.goalHorizon || "Open-ended."}
+
+${context.childName.toUpperCase()}'S FILE:
+${context.fileContext}
+
+STEPS ALREADY IN PLAY (don't duplicate):
+${context.inPlay.length > 0 ? context.inPlay.map((t) => `- ${t}`).join("\n") : "None yet."}
+
+PASSED ON (don't re-suggest):
+${context.passedOn.length > 0 ? context.passedOn.map((t) => `- ${t}`).join("\n") : "Nothing yet."}
+
+TODAY: ${context.todayLabel}
+
+BUILD:
+1. "approach" — 2-3 sentences: what working toward this looks like at ${context.ageLabel} old specifically — what matters now versus what comes later. Honest about pace: a long-term goal is measured in years.
+2. "steps" — 6-8 in total:
+   - 2-3 with kind "routine": small recurring habits that fit the week they already have (cadence required)
+   - 2-3 with kind "activity": one-off things to try in the next few weeks (cadence null)
+   - 2-3 with kind "sign": things his parents would NOTICE that say it's taking root, phrased as moments ("He asks to…", "You catch him…") — never tests, levels, or benchmarks (cadence null)
+
+RULES:
+- Anchor in his file: build on his interests and what already works; respect what's hard right now
+- Every step doable by a busy family — small beats ambitious
+- The parents steer; he's a kid, not a project. No pressure tactics, no rewards-for-performance
+- No clinical language, no milestones-as-judgments, never assess or label him
+
+Return ONLY valid JSON (no markdown, no backticks):
+{
+  "approach": string,
+  "steps": [ ${GOAL_STEP_SHAPE} ]
+}`;
+}
+
+export function buildGoalCheckinPrompt(context: {
+  childName: string;
+  ageLabel: string;
+  goalTitle: string;
+  goalWhy: string | null;
+  goalHorizon: string | null;
+  startedLabel: string;
+  planText: string;
+  todayLabel: string;
+}): string {
+  return `You are Orbit's long-game guide, doing a check-in on a long-term goal for ${context.childName} (${context.ageLabel} old) with his parents. You will receive his file and the moments captured recently by his parents and teachers.
+
+THE GOAL: "${context.goalTitle}"
+WHY IT MATTERS TO THEM: ${context.goalWhy || "Not stated."}
+HORIZON: ${context.goalHorizon || "Open-ended."}
+SET ON: ${context.startedLabel}
+TODAY: ${context.todayLabel}
+
+THE PLAN SO FAR:
+${context.planText || "No steps yet."}
+
+WRITE:
+1. "note" — 2-4 sentences, a knowledgeable friend's read: what in the recent moments connects to this goal, and what the plan's state says (what's running, what's sitting untouched). If nothing captured relates to the goal, say so plainly — that's useful to know, not a failure.
+2. "evidence" — up to 3 captured moments that genuinely relate to the goal, each a short line starting with its date. Only moments that are actually in the list you were given. Empty array if none.
+3. "nudge" — ONE concrete thing to do this week. Small and doable.
+4. "suggested_steps" — 0-2 new steps, only if the plan has a real gap. Empty array otherwise.
+
+RULES:
+- Anchor every claim in the moments or the plan's state. Never invent moments.
+- Progress is described, never scored: no percentages, levels, or grades, and no "on track / behind" verdicts about HIM. A plan can stall; a kid is never behind.
+- No clinical language; never diagnose or assess.
+- Warm, brief, honest.
+
+Return ONLY valid JSON (no markdown, no backticks):
+{
+  "note": string,
+  "evidence": string[],
+  "nudge": string,
+  "suggested_steps": [ ${GOAL_STEP_SHAPE} ]
 }`;
 }

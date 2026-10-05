@@ -134,6 +134,79 @@ export async function buildFileContext(childId: string): Promise<string> {
     console.warn("[file-context] report takeaways skipped:", err);
   }
 
+  // Rituals: only what a parent started or confirmed — never raw AI offers.
+  const ritualLines: string[] = [];
+  try {
+    const { data: rituals, error } = await sb
+      .from("kid_rituals")
+      .select("title, cadence, status, mastered_on")
+      .eq("child_id", childId)
+      .in("status", ["active", "mastered"])
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    const owns = (rituals ?? []).filter((r) => r.status === "mastered");
+    const learning = (rituals ?? []).filter((r) => r.status === "active");
+    if (owns.length > 0) {
+      ritualLines.push(`Owns: ${owns.map((r) => r.title).join("; ")}`);
+    }
+    if (learning.length > 0) {
+      ritualLines.push(
+        `Learning now: ${learning
+          .map((r) => `${r.title}${r.cadence ? ` (${r.cadence})` : ""}`)
+          .join("; ")}`
+      );
+    }
+  } catch (err) {
+    console.warn("[file-context] rituals skipped:", err);
+  }
+
+  // Long-term goals: the parents' own words plus the steps they took on.
+  // AI check-in notes are deliberately left out — the file holds only what
+  // a parent wrote or approved.
+  const goalLines: string[] = [];
+  try {
+    const { data: goals, error } = await sb
+      .from("kid_goals")
+      .select("id, title, why, horizon, status")
+      .eq("child_id", childId)
+      .in("status", ["active", "achieved"])
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    const active = (goals ?? []).filter((g) => g.status === "active");
+    const routinesByGoal = new Map<string, string[]>();
+    if (active.length > 0) {
+      const { data: steps, error: stepError } = await sb
+        .from("goal_steps")
+        .select("goal_id, title, cadence")
+        .in("goal_id", active.map((g) => g.id))
+        .eq("kind", "routine")
+        .eq("status", "active");
+      if (stepError) throw new Error(stepError.message);
+      for (const s of steps ?? []) {
+        const list = routinesByGoal.get(s.goal_id) ?? [];
+        list.push(`${s.title}${s.cadence ? ` (${s.cadence})` : ""}`);
+        routinesByGoal.set(s.goal_id, list);
+      }
+    }
+    for (const g of goals ?? []) {
+      if (g.status === "achieved") {
+        goalLines.push(`Achieved: ${g.title}`);
+        continue;
+      }
+      const routines = routinesByGoal.get(g.id);
+      goalLines.push(
+        [
+          g.title,
+          g.horizon ? ` — ${g.horizon}` : "",
+          g.why ? `. Why: ${g.why}` : "",
+          routines ? `. Routines running: ${routines.join("; ")}` : "",
+        ].join("")
+      );
+    }
+  } catch (err) {
+    console.warn("[file-context] goals skipped:", err);
+  }
+
   const blocks: string[] = [`CHILD: ${name}, ${age} old (${band})`];
   const addBlock = (title: string, lines: string[]) => {
     if (lines.length > 0) blocks.push(`${title}:\n${lines.join("\n")}`);
@@ -150,6 +223,8 @@ export async function buildFileContext(childId: string): Promise<string> {
     ...sectionLines.goals,
     ...sectionLines.values,
   ]);
+  addBlock("PARENTS' LONG-TERM GOALS FOR HIM", goalLines);
+  addBlock("RESPONSIBILITIES HE OWNS (RITUALS)", ritualLines);
   addBlock("CURRENT ACTIVITIES", activityLines);
   addBlock("RECENT REPORT TAKEAWAYS", reportLines);
   addBlock("OTHER NOTES", sectionLines.other);

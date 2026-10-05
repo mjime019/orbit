@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RITUAL_AREAS, STEP_KINDS } from "./rituals-goals";
 
 // The one place AI text becomes trusted data. Every route that expects JSON
 // from callAI goes through parseAIResponse with a schema from this file —
@@ -164,6 +165,40 @@ export const ReportIngestionSchema = z.object({
 export const PlannerIdeasSchema = z
   .array(z.record(z.string(), z.unknown()))
   .min(1);
+
+// Ritual suggestions: an array of responsibilities. Items with an empty
+// title are dropped by the route (same tolerance as capture's children).
+export const RitualSuggestionsSchema = z
+  .array(
+    z.object({
+      title: z.string().catch(""),
+      area: z.enum(RITUAL_AREAS).catch("home"),
+      why_now: optionalString,
+      how_to_start: optionalString,
+      cadence: optionalString,
+      looks_like_owning_it: optionalString,
+    })
+  )
+  .min(1);
+
+const GoalStepSchema = z.object({
+  kind: z.enum(STEP_KINDS).catch("activity"),
+  title: z.string().catch(""),
+  detail: optionalString,
+  cadence: optionalString,
+});
+
+export const GoalPlanSchema = z.object({
+  approach: z.string().catch(""),
+  steps: z.array(GoalStepSchema).min(1),
+});
+
+export const GoalCheckinSchema = z.object({
+  note: z.string().min(1),
+  evidence: stringList,
+  nudge: optionalString,
+  suggested_steps: z.array(GoalStepSchema).catch([]),
+});
 
 // ─── Parsing ────────────────────────────────────────────────────
 

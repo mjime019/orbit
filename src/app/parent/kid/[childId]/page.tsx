@@ -25,12 +25,16 @@ import { IdentityCard } from "@/components/kid/identity-card";
 import { CoverageCard } from "@/components/kid/coverage-card";
 import { ActivitiesTab } from "@/components/kid/activities-tab";
 import { ReportsTab } from "@/components/kid/reports-tab";
+import { GoalsTab } from "@/components/kid/goals-tab";
+import { RitualsTab } from "@/components/kid/rituals-tab";
 import { GenerateChapterButton } from "@/components/kid/generate-chapter-button";
 import { SummaryCard } from "../../summary-card";
 
-type Tab = "story" | "activities" | "reports" | "about";
+type Tab = "story" | "goals" | "rituals" | "activities" | "reports" | "about";
 const TABS: { key: Tab; label: string; emoji: string }[] = [
   { key: "story", label: "Story", emoji: "🌟" },
+  { key: "goals", label: "Goals", emoji: "🎯" },
+  { key: "rituals", label: "Rituals", emoji: "🔑" },
   { key: "activities", label: "Activities", emoji: "⚽" },
   { key: "reports", label: "Reports", emoji: "📄" },
   { key: "about", label: "About", emoji: "💛" },
@@ -40,6 +44,10 @@ const TABS: { key: Tab; label: string; emoji: string }[] = [
 const TAB_EXPLAINERS: Record<Tab, string> = {
   story:
     "Who he is, what we've been seeing lately, and the chapters of his story so far.",
+  goals:
+    "The long game — what you want for him, and the small steps that get there.",
+  rituals:
+    "The real jobs he owns — added one at a time as he grows.",
   activities:
     "What he's actually doing — it becomes part of his file and his chapters.",
   reports: "School's paper trail, read and remembered by Orbit.",
@@ -87,7 +95,9 @@ export default async function KidPage({
   // Only the session parent's own kids are reachable here.
   const { profileId } = await getSessionProfile();
   const kids = await getParentChildren(profileId);
-  if (!kids.some((k) => k.id === childId)) notFound();
+  // Roster index (oldest-first) keys the kid's identity color everywhere.
+  const kidIndex = kids.findIndex((k) => k.id === childId);
+  if (kidIndex === -1) notFound();
 
   const { child, profile } = await getChildWithProfile(childId);
   if (!child) notFound();
@@ -153,6 +163,12 @@ export default async function KidPage({
           )}
           <StoryTab childId={childId} childName={child.name} profile={profile} />
         </>
+      )}
+      {tab === "goals" && (
+        <GoalsTab childId={childId} childName={child.name} kidIndex={kidIndex} />
+      )}
+      {tab === "rituals" && (
+        <RitualsTab childId={childId} childName={child.name} kidIndex={kidIndex} />
       )}
       {tab === "activities" && (
         <ActivitiesTab childId={childId} childName={child.name} />

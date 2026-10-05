@@ -862,6 +862,82 @@ function mockReportIngestion(systemPrompt: string, userMessage: string) {
   };
 }
 
+/** Rituals: next responsibilities, shaped exactly like the prompt contract. */
+function mockRitualSuggestions(systemPrompt: string) {
+  const childName =
+    systemPrompt.match(/next responsibilities for (\w+)/)?.[1] ?? "him";
+  return [
+    {
+      title: "Sets out the napkins for dinner",
+      area: "home",
+      why_now: `${childName} is old enough for a job with a clear start and finish, and dinner happens every night (mock — AI_MODE=mock).`,
+      how_to_start: "Show him where the napkins live, set the table together twice, then let it be his.",
+      cadence: "every evening",
+      looks_like_owning_it: "He heads for the napkin drawer when he hears dinner is close.",
+    },
+    {
+      title: "Puts his shoes in the basket",
+      area: "belongings",
+      why_now: `A one-step job ${childName} can finish on his own the moment he walks in.`,
+      how_to_start: "Do it side by side for a few days, then stop reminding.",
+      cadence: "whenever he comes home",
+      looks_like_owning_it: "Shoes land in the basket without anyone saying a word.",
+    },
+    {
+      title: "Picks tomorrow's shirt",
+      area: "choices",
+      why_now: `A small decision that is fully ${childName}'s to make.`,
+      how_to_start: "Offer two options at bedtime and go with whatever he chooses.",
+      cadence: "every night",
+      looks_like_owning_it: "He has an opinion before you ask.",
+    },
+  ];
+}
+
+/** Goals: plan + check-in mocks, shaped like their prompt contracts. */
+function mockGoalSteps(goal: string) {
+  return [
+    {
+      kind: "routine",
+      title: `Ten minutes on "${goal}" after breakfast`,
+      detail: "Same slot every time, so it stops being a decision.",
+      cadence: "Saturday mornings",
+    },
+    {
+      kind: "activity",
+      title: "Let him watch someone a little older do it",
+      detail: "Kids borrow confidence from kids one step ahead.",
+      cadence: null,
+    },
+    {
+      kind: "sign",
+      title: "He asks to do it without being prompted",
+      detail: "The asking is the sign, however it goes afterward.",
+      cadence: null,
+    },
+  ];
+}
+
+function mockGoalPlan(systemPrompt: string) {
+  const childName = systemPrompt.match(/long-term goal for (\w+)/)?.[1] ?? "him";
+  const goal = systemPrompt.match(/THE GOAL: "([^"]+)"/)?.[1] ?? "the goal";
+  return {
+    approach: `At this age, "${goal}" is mostly about ${childName} enjoying it and coming back for more (mock — AI_MODE=mock). Keep it small and regular; the skill follows the habit.`,
+    steps: mockGoalSteps(goal),
+  };
+}
+
+function mockGoalCheckin(systemPrompt: string) {
+  const childName = systemPrompt.match(/long-term goal for (\w+)/)?.[1] ?? "him";
+  const goal = systemPrompt.match(/THE GOAL: "([^"]+)"/)?.[1] ?? "the goal";
+  return {
+    note: `Nothing captured lately speaks directly to "${goal}" for ${childName} (mock — AI_MODE=mock). That says more about what's been written down than about him.`,
+    evidence: [],
+    nudge: "Pick one routine from the plan and do it once this week.",
+    suggested_steps: [],
+  };
+}
+
 // ─── Public API ─────────────────────────────────────────────────
 
 /**
@@ -907,5 +983,11 @@ export function generateMockResponse(
       return JSON.stringify(mockPlannerExtracurricular(systemPrompt));
     case "report_ingestion":
       return JSON.stringify(mockReportIngestion(systemPrompt, userMessage));
+    case "ritual_suggestions":
+      return JSON.stringify(mockRitualSuggestions(systemPrompt));
+    case "goal_plan":
+      return JSON.stringify(mockGoalPlan(systemPrompt));
+    case "goal_checkin":
+      return JSON.stringify(mockGoalCheckin(systemPrompt));
   }
 }
