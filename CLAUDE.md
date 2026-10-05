@@ -67,6 +67,23 @@ Key judgment call: ROADMAP.md's "Phase 1–3 COMPLETE ✅" was scored against ac
 
 ## Changelog
 
+- **Oct 5, 2026 — Fonts self-hosted (no build-time Google fetch).** A
+  production build of 25b63e6 failed with 18 Turbopack errors: Google Fonts
+  answered the Newsreader request with `fonts.gstatic.com/l/font?kit=…`
+  URLs that Next 16.1.6's font-file replacer can't parse (transient — the
+  retry passed, but it can recur on any deploy). `src/app/layout.tsx` now
+  uses `next/font/local` with the latin variable woff2 files checked in
+  under `src/app/fonts/<family>/` (each beside its `OFL.txt`) — byte-identical
+  to what Google served the last good build. Same three variables
+  (`--font-display` / `--font-body` / `--font-meta`), same weights (as
+  ranges `400 600` / `400 700` / `400 500`), styles and `display: "swap"`.
+  Two things changed: the emitted family names are now `newsreader` /
+  `hanken` / `splineMono` (from the const names), so only ever reference
+  fonts through the variables; and only the latin subset ships —
+  next/font/google also lazy-served latin-ext / vietnamese / cyrillic-ext
+  files, so those glyphs now fall back to system fonts (English and Spanish
+  are fully covered by latin).
+
 - **Oct 5, 2026 — Round 5: Rituals + long-term Goals (main).** Two new
   kid-page tabs (`Story · Goals · Rituals · Activities · Reports · About`).
   **Rituals** (`kid_rituals`): real responsibilities a kid owns, added as
