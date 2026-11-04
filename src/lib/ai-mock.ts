@@ -938,6 +938,24 @@ function mockGoalCheckin(systemPrompt: string) {
   };
 }
 
+/** Digest questions: one leading, answerable question per kid. */
+function mockDigestQuestions(systemPrompt: string) {
+  const names = [...systemPrompt.matchAll(/^=== ([A-Z][A-Z' -]+) \(/gm)].map((m) =>
+    m[1].charAt(0) + m[1].slice(1).toLowerCase()
+  );
+  const kids = names.length > 0 ? names : ["him"];
+  return {
+    questions: kids.map((name, i) => ({
+      name,
+      question:
+        i % 2 === 0
+          ? `${name} was into building tall towers last week — still going, or has he moved on? (mock — AI_MODE=mock)`
+          : `Did ${name}'s morning job happen this week, or did it need a nudge? (mock — AI_MODE=mock)`,
+      thread: i % 2 === 0 ? "interest: building towers" : "ritual: morning job",
+    })),
+  };
+}
+
 // ─── Public API ─────────────────────────────────────────────────
 
 /**
@@ -989,5 +1007,7 @@ export function generateMockResponse(
       return JSON.stringify(mockGoalPlan(systemPrompt));
     case "goal_checkin":
       return JSON.stringify(mockGoalCheckin(systemPrompt));
+    case "digest_questions":
+      return JSON.stringify(mockDigestQuestions(systemPrompt));
   }
 }

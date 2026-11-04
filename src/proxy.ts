@@ -49,8 +49,9 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Everything except /login, /api/health (the keep-alive cron has no
-    // session), and static assets.
-    "/((?!login|api/health|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Everything except /login, the sessionless channels (keep-alive cron,
+    // digest cron, inbox token + inbound-email webhook — each authenticates
+    // itself), and static assets.
+    "/((?!login|api/health|api/digest|api/inbox|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

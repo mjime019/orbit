@@ -19,6 +19,7 @@ import {
   buildRitualSuggestionsPrompt,
   buildGoalPlanPrompt,
   buildGoalCheckinPrompt,
+  buildDigestQuestionsPrompt,
 } from "@/lib/prompts";
 import {
   parseAIResponse,
@@ -35,6 +36,7 @@ import {
   RitualSuggestionsSchema,
   GoalPlanSchema,
   GoalCheckinSchema,
+  DigestQuestionsSchema,
 } from "@/lib/parse-ai";
 import { RITUAL_AREAS, STEP_KINDS } from "@/lib/rituals-goals";
 
@@ -347,6 +349,38 @@ const CASES: Record<PromptType, JsonCase | TextCase> = {
     check: (parsed: z.output<typeof GoalCheckinSchema>) => {
       expect(parsed.note).toContain("Mateo");
       expect(Array.isArray(parsed.evidence)).toBe(true);
+    },
+  },
+  digest_questions: {
+    kind: "json",
+    system: buildDigestQuestionsPrompt({
+      parentNames: "Ana and Tomás",
+      kids: [
+        {
+          name: "Mateo",
+          ageLabel: "5 yr",
+          fileContext: "Interests: building towers",
+          recentMoments: "[Nov 1] (parent) Built a tower taller than himself.",
+        },
+        {
+          name: "Luca",
+          ageLabel: "4 yr",
+          fileContext: "RESPONSIBILITIES HE OWNS (RITUALS):\nLearning now: Feeds the dog (every morning)",
+          recentMoments: "",
+        },
+      ],
+      previousQuestions: ["Is Luca still asking for the dinosaur book at bedtime?"],
+      todayLabel: "Tuesday, November 3, 2026",
+    }),
+    user: "Write the questions now.",
+    schema: DigestQuestionsSchema,
+    check: (parsed: z.output<typeof DigestQuestionsSchema>) => {
+      const names = parsed.questions.map((q) => q.name);
+      expect(names).toContain("Mateo");
+      expect(names).toContain("Luca");
+      for (const q of parsed.questions) {
+        expect(q.question.length).toBeGreaterThan(0);
+      }
     },
   },
 };

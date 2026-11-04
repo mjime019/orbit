@@ -200,6 +200,18 @@ export const GoalCheckinSchema = z.object({
   suggested_steps: z.array(GoalStepSchema).catch([]),
 });
 
+export const DigestQuestionsSchema = z.object({
+  questions: z
+    .array(
+      z.object({
+        name: z.string().catch(""),
+        question: z.string().catch(""),
+        thread: z.string().catch(""),
+      })
+    )
+    .min(1),
+});
+
 // ─── Parsing ────────────────────────────────────────────────────
 
 /**

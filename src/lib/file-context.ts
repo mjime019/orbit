@@ -4,6 +4,7 @@
 // temperament, school notes, family, philosophy — was invisible to the AI.
 // Sections render in a fixed order; empty sections are omitted.
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabase } from "./supabase-server";
 import { formatAge, ageBand } from "./age";
 import {
@@ -31,8 +32,14 @@ function lineFor(
   return { section: spec.section, line: `${spec.label}: ${text}` };
 }
 
-export async function buildFileContext(childId: string): Promise<string> {
-  const sb = await createServerSupabase();
+// Pass a client for sessionless callers (the digest cron uses the
+// service-role client); otherwise the cookie-bound session client is used.
+export async function buildFileContext(
+  childId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client?: SupabaseClient<any, any, any>
+): Promise<string> {
+  const sb = client ?? (await createServerSupabase());
 
   const [{ data: child }, { data: profile }] = await Promise.all([
     sb

@@ -65,6 +65,7 @@ const TIER_BY_PROMPT: Record<PromptType, ModelTier> = {
   ritual_suggestions: WRITER_TIER,
   goal_plan: WRITER_TIER,
   goal_checkin: WRITER_TIER,
+  digest_questions: WRITER_TIER,
 };
 
 export function tierFor(promptType: PromptType): ModelTier {

@@ -542,6 +542,19 @@ export async function getHomeKidRows(parentId: string): Promise<HomeKidRow[]> {
   );
 }
 
+// Words waiting for a parent's OK (shortcut / email / saved-for-later).
+// Zero until scripts/pivot/10-inbox-digest.sql adds the channel column.
+export async function countInbox(): Promise<number> {
+  const sb = await createServerSupabase();
+  const { count, error } = await sb
+    .from("captures")
+    .select("id", { count: "exact", head: true })
+    .in("status", ["draft", "processed"])
+    .neq("channel", "app");
+  if (error) return 0;
+  return count ?? 0;
+}
+
 export async function countObservationsSince(childId: string, sinceIso: string | null) {
   const sb = await createServerSupabase();
   let query = sb

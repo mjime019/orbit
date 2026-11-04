@@ -10,7 +10,7 @@ const TABS = [
     href: "/parent",
     label: "Home",
     emoji: "🏠",
-    match: /^\/parent$|^\/parent\/(kid|growth|understand|onboarding|highlights)/,
+    match: /^\/parent$|^\/parent\/(kid|growth|understand|onboarding|highlights|inbox)/,
   },
   { href: "/capture", label: "", emoji: "", match: /^\/capture/, center: true },
   {

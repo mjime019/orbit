@@ -20,7 +20,8 @@ export type PromptType =
   | "report_ingestion"
   | "ritual_suggestions"
   | "goal_plan"
-  | "goal_checkin";
+  | "goal_checkin"
+  | "digest_questions";
 
 export function buildObservationExtractionPrompt(context: {
   schoolName: string;
@@ -457,7 +458,12 @@ export function buildMultiChildExtractionPrompt(context: {
   speakerRole: "teacher" | "parent";
   setting: "school" | "home";
   roster: { name: string; age: number | null }[];
+  /** What the speaker was responding to (e.g. the digest's questions). */
+  contextNote?: string | null;
 }): string {
+  const contextBlock = context.contextNote?.trim()
+    ? `\n\nCONTEXT (what ${context.speakerName} was replying to — use it to resolve "he", "it", "still going", "yes"; it is not itself an observation):\n"""\n${context.contextNote.trim()}\n"""`
+    : "";
   const childList = context.roster
     .map((c) => `${c.name}${c.age != null ? ` (age ${c.age})` : ""}`)
     .join(", ");
@@ -472,7 +478,7 @@ export function buildMultiChildExtractionPrompt(context: {
 
   return `You are an early childhood observation assistant. ${settingLine} Your job is to extract structured developmental observations for THESE children only: ${childList}.${focusLine}
 
-Other children may be mentioned — include them in social context but do NOT create standalone observation records for them.
+Other children may be mentioned — include them in social context but do NOT create standalone observation records for them.${contextBlock}
 
 FOR EACH CHILD LISTED ABOVE THAT WAS MENTIONED, EXTRACT:
 1. **name** — the child's name exactly as listed above.
@@ -776,5 +782,61 @@ Return ONLY valid JSON (no markdown, no backticks):
   "evidence": string[],
   "nudge": string,
   "suggested_steps": [ ${GOAL_STEP_SHAPE} ]
+}`;
+}
+
+// ─── The twice-weekly email ───────────────────────────────────────
+// One leading question per kid: it hands the parent a thread from the file
+// (a ritual being learned, a goal routine, the freshest moment, an interest)
+// and asks something answerable in a sentence. Never "what surprised you".
+export function buildDigestQuestionsPrompt(context: {
+  parentNames: string;
+  kids: {
+    name: string;
+    ageLabel: string;
+    fileContext: string;
+    recentMoments: string;
+  }[];
+  previousQuestions: string[];
+  todayLabel: string;
+}): string {
+  const kidBlocks = context.kids
+    .map(
+      (k) => `=== ${k.name.toUpperCase()} (${k.ageLabel} old) ===
+FILE:
+${k.fileContext || "File is empty."}
+
+MOMENTS CAPTURED IN THE LAST TWO WEEKS:
+${k.recentMoments || "None captured."}`
+    )
+    .join("\n\n");
+
+  return `You are Orbit, writing the short check-in email that goes to ${context.parentNames} twice a week about their kids. For EACH kid, write ONE question.
+
+TODAY: ${context.todayLabel}
+
+${kidBlocks}
+
+QUESTIONS ASKED IN RECENT EMAILS (don't repeat these threads):
+${context.previousQuestions.length > 0 ? context.previousQuestions.map((q) => `- ${q}`).join("\n") : "None yet."}
+
+WHAT A GOOD QUESTION IS:
+- It hands the parent a thread, it doesn't ask them to find one. Name one specific, concrete thing from THIS kid's file or recent moments, then ask the natural follow-up: "Still into it?", "Did it happen Saturday?", "Is it his yet, or does he still need the nudge?", "Has he said it again since?"
+- Answerable in one sentence while making coffee. Yes/no plus a detail is perfect.
+- Best threads, roughly in this order: a ritual he's LEARNING NOW (is it his yet?), a goal routine that's RUNNING (did it happen this week?), the freshest captured moment (did it come up again?), something hard right now (how did it go this week?), an interest from the file (still going, or moved on?).
+- Rotate: pick a different thread than the recent emails used. Spread across the kids' lives, not the same type of question for every kid.
+- For a baby, ask about something a parent notices day to day (sounds, moves, foods, sleep), still anchored in the file.
+
+NEVER:
+- Ask the parent to evaluate, rate, rank, or reflect abstractly ("what surprised you", "how is he developing", "what are you proud of")
+- Ask about things not in the file or moments
+- Use clinical language, milestones, or percentiles
+- Exceed 25 words per question
+
+Return ONLY valid JSON (no markdown, no backticks):
+{
+  "questions": [
+    { "name": string, "question": string, "thread": string }   // thread: a 3-6 word label of what the question is about, e.g. "ritual: feeds the dog"
+  ]
 }`;
 }

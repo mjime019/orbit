@@ -7,5 +7,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // Claude Code task worktrees live under .claude/ inside the repo —
+    // their copies of the suite must not double-count here.
+    exclude: ["**/node_modules/**", "**/.claude/**", "**/.next/**"],
   },
 });

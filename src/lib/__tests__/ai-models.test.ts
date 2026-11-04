@@ -24,6 +24,7 @@ describe("model tiers", () => {
       "ritual_suggestions",
       "goal_plan",
       "goal_checkin",
+      "digest_questions",
     ] as const) {
       expect(tierFor(p)).toBe(WRITER_TIER);
     }

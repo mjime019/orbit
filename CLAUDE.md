@@ -67,6 +67,51 @@ Key judgment call: ROADMAP.md's "Phase 1–3 COMPLETE ✅" was scored against ac
 
 ## Changelog
 
+- **Nov 4, 2026 — Round 6: Orbit pushes, and capture meets you where you
+  are (main).** Diagnosis that drove it: Orbit was pull-only with a
+  90-second capture ritual; Supabase's inactivity emails out-performed the
+  product. Now: **(1) Twice-weekly email** (`/api/digest/send`, Vercel cron
+  Tue+Fri 12:00 UTC, `CRON_SECRET` bearer; `?preview=1` renders it for a
+  logged-in parent, `?send=1` sends now). Per kid: fresh pulse + ONE
+  *leading* question written by the `digest_questions` prompt (writer
+  tier) from the kid's file, last-14-day moments, rituals and goals — it
+  names a concrete thread and asks something answerable in a sentence
+  (never "what surprised you"); the last 3 digests' questions are fed back
+  so threads rotate (`family_digests` table). Rendering is pure
+  (`renderDigestEmail`, tested). Sent via Resend REST (`src/lib/email.ts`,
+  no SDK): `RESEND_API_KEY`, `RESEND_FROM` (defaults to
+  `onboarding@resend.dev`, which only delivers to the Resend account's own
+  address — a verified domain is needed for the second parent).
+  **(2) Reply-to-capture:** `reply_to` = `orbit+<digestId>@$RESEND_INBOUND_DOMAIN`
+  (Resend's free `<id>.resend.app` receiving subdomain works);
+  `/api/inbox/email` verifies the Svix signature (`RESEND_WEBHOOK_SECRET`,
+  manual HMAC, tested), fetches the body, strips the quoted digest
+  (`extractReplyText`, tested for Gmail/Outlook/Apple), requires the sender
+  to be a parent profile, dedupes on `captures.source_ref`, and feeds the
+  digest's questions to the extractor as a CONTEXT block
+  (`buildMultiChildExtractionPrompt({contextNote})`) so "yes, still going"
+  resolves. **(3) Capture inbox** — "jot now, tidy later": `captures` gains
+  `channel` (app|later|shortcut|email), `source_ref`, `context_note`,
+  `reviewed_at`, status `dismissed`; `/api/inbox` POST accepts a bearer
+  **inbox token** (`profiles.inbox_token`, service-role client) or the
+  session (in-app "Just save it — I'll review later" on the compose step),
+  saves words first, extracts via the shared core `src/lib/extract.ts`
+  (the in-app process route now uses it too), parks the result as
+  `processed`; `/parent/inbox` shows the same editable per-child cards as
+  capture and confirms through `/api/capture/confirm` — **the review
+  invariant holds on every channel**. Draft items (AI was down) get
+  "Sort them now" (`/api/inbox/reprocess`). Home shows "N moments waiting
+  for your OK". The inbox page also holds the Siri-shortcut recipe + token
+  (`/api/inbox/token`, rotate). **Sessionless channels use
+  `SUPABASE_SERVICE_ROLE_KEY`** (`src/lib/supabase-admin.ts`, server-only,
+  constructed only after token/signature/CRON_SECRET auth); proxy exempts
+  `api/inbox` and `api/digest`, which authenticate themselves.
+  `buildFileContext(childId, client?)` accepts the admin client for the
+  cron. **Requires `scripts/pivot/10-inbox-digest.sql`** and the env vars
+  above (+ `APP_URL`); everything degrades to a visible "not set up" note
+  or a 503 with the missing variable's name. Tooling: vitest/eslint now
+  ignore `.claude/**` (task worktrees inside the repo were double-counting).
+
 - **Oct 5, 2026 — Fonts self-hosted (no build-time Google fetch).** A
   production build of 25b63e6 failed with 18 Turbopack errors: Google Fonts
   answered the Newsreader request with `fonts.gstatic.com/l/font?kit=…`

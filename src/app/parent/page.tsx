@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { getHomeKidRows } from "@/lib/queries";
+import { getHomeKidRows, countInbox } from "@/lib/queries";
 import { getSessionProfile } from "@/lib/session";
 import { familyFormatDate, familyGreeting } from "@/lib/tz";
 import { NoKidsState } from "@/components/ui/no-kids-state";
@@ -27,7 +27,10 @@ const QUICK_ACTIONS = [
 // then doors into the planners. Depth lives on each kid's page.
 export default async function ParentHomePage() {
   const { profileId, displayName } = await getSessionProfile();
-  const kidRows = await getHomeKidRows(profileId);
+  const [kidRows, inboxCount] = await Promise.all([
+    getHomeKidRows(profileId),
+    countInbox(),
+  ]);
 
   if (kidRows.length === 0) return <NoKidsState />;
 
@@ -59,6 +62,22 @@ export default async function ParentHomePage() {
       >
         ✏️ Capture a moment
       </Link>
+
+      {inboxCount > 0 && (
+        <Link
+          href="/parent/inbox"
+          className="flex items-center gap-3 mb-5 bg-lavender/25 border border-lavender/50 rounded-2xl px-4 py-3 hover:bg-lavender/35 transition-colors"
+        >
+          <span className="text-xl">📥</span>
+          <span className="text-[13px] text-espresso flex-1">
+            <span className="font-semibold">
+              {inboxCount} moment{inboxCount === 1 ? "" : "s"} waiting for your OK
+            </span>{" "}
+            — from your shortcut, email replies, or saved for later.
+          </span>
+          <span className="text-xs font-medium text-rust shrink-0">Review →</span>
+        </Link>
+      )}
 
       <div className="grid gap-3 lg:grid-cols-3">
         {kidRows.map((row, i) => (

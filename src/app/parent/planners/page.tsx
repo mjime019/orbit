@@ -8,6 +8,12 @@ import { SectionHead } from "@/components/ui/section-head";
 
 const PLANNERS = [
   {
+    href: "/parent/inbox",
+    emoji: "📥",
+    title: "Inbox & capture from anywhere",
+    body: "Moments waiting for your OK · the Siri shortcut · reply-by-email",
+  },
+  {
     href: "/parent/chat",
     emoji: "💬",
     title: "Ask Orbit",

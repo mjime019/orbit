@@ -150,6 +150,8 @@ export function CaptureFlow({
   const [anythingElseText, setAnythingElseText] = useState("");
   const [error, setError] = useState("");
   const [savedCount, setSavedCount] = useState(0);
+  // "Jot now, tidy later": the words go to the inbox, review happens there.
+  const [savedLater, setSavedLater] = useState<string | null>(null);
 
   const captureIdRef = useRef<string | null>(null);
 
@@ -165,6 +167,29 @@ export function CaptureFlow({
     }
     return res;
   }, []);
+
+  // ─── Save for later: words to the inbox, no review now ───────────
+  const handleSaveForLater = async () => {
+    if (!transcript.trim()) return;
+    setStep("saving");
+    setError("");
+    try {
+      const res = await gatedFetch("/api/inbox", {
+        text: transcript,
+        childId: selectedKidId ?? undefined,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't save");
+      setSavedLater(data.message || "Saved to your inbox.");
+      setStep("done");
+    } catch (err) {
+      setError(
+        (err instanceof Error ? err.message : "Couldn't save for later.") +
+          " Your words are still below."
+      );
+      setStep("compose");
+    }
+  };
 
   // ─── Submit: words first, then AI ────────────────────────────────
   const handleSubmitTranscript = async () => {
@@ -417,6 +442,7 @@ export function CaptureFlow({
 
   const handleReset = () => {
     captureIdRef.current = null;
+    setSavedLater(null);
     setStep("ready");
     setTranscript("");
     setExtraction(null);
@@ -658,6 +684,15 @@ export function CaptureFlow({
               >
                 Looks good — submit
               </button>
+              {ctx === "parent" && (
+                <button
+                  onClick={handleSaveForLater}
+                  disabled={!transcript.trim()}
+                  className="text-sm font-medium text-rust disabled:opacity-40"
+                >
+                  Just save it — I&apos;ll review later
+                </button>
+              )}
               <button
                 onClick={() => setStep("ready")}
                 className="text-sm text-warm-gray underline underline-offset-2"
@@ -910,13 +945,16 @@ export function CaptureFlow({
         {step === "done" && (
           <div className="fade-up">
             <div className="text-center py-12">
-              <span className="text-4xl">🙏</span>
+              <span className="text-4xl">{savedLater ? "📥" : "🙏"}</span>
               <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold text-espresso mt-4">
                 Saved!
               </h2>
               <p className="text-sm text-warm-gray mt-2">
-                {savedCount} observation{savedCount === 1 ? "" : "s"} added
-                {ctx === "parent" ? " to your kids' story." : " for the class."}
+                {savedLater
+                  ? savedLater
+                  : `${savedCount} observation${savedCount === 1 ? "" : "s"} added${
+                      ctx === "parent" ? " to your kids' story." : " for the class."
+                    }`}
               </p>
             </div>
 
