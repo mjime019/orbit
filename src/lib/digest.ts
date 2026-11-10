@@ -6,6 +6,7 @@ import { parseAIResponse, DigestQuestionsSchema } from "./parse-ai";
 import { formatAge } from "./age";
 import { familyFormatDate } from "./tz";
 import { INBOX_STATUSES } from "./inbox";
+import { isDeliverable } from "./email";
 
 // The twice-weekly email: each kid in two lines (what's fresh + one leading
 // question the parent can answer in a sentence), then whatever is waiting
@@ -38,11 +39,13 @@ export async function buildDigestContent(sb: AnySupabase): Promise<DigestContent
     .eq("role", "parent")
     .not("email", "is", null);
   if (pError) throw new Error(`[digest] parents: ${pError.message}`);
-  const recipients = (parents ?? []).map((p) => ({
-    profileId: p.id as string,
-    name: p.name as string,
-    email: String(p.email).trim(),
-  }));
+  const recipients = (parents ?? [])
+    .map((p) => ({
+      profileId: p.id as string,
+      name: p.name as string,
+      email: String(p.email).trim(),
+    }))
+    .filter((r) => isDeliverable(r.email));
   if (recipients.length === 0) throw new Error("[digest] no parent profiles with an email");
 
   const { data: links, error: lError } = await sb

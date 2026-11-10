@@ -122,6 +122,16 @@ export function verifyWebhookSignature(
   });
 }
 
+// Reserved TLDs and example domains never deliver (RFC 2606/6761). Test
+// logins such as a dev account on ".test" must not be mailed: once a real
+// sending domain is verified, each attempt is a hard bounce against it.
+const NEVER_DELIVERS = /(\.(test|example|invalid|localhost)|@example\.(com|org|net))$/i;
+
+export function isDeliverable(address: string): boolean {
+  const a = address.trim();
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a) && !NEVER_DELIVERS.test(a);
+}
+
 /** Extract "name@host" from "Name <name@host>" or a bare address. */
 export function bareAddress(value: string): string {
   const match = value.match(/<([^>]+)>/);

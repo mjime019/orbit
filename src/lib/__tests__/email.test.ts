@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createHmac } from "node:crypto";
 import { extractReplyText } from "../email-reply";
-import { verifyWebhookSignature, bareAddress } from "../email";
+import { verifyWebhookSignature, bareAddress, isDeliverable } from "../email";
 import { renderDigestEmail } from "../digest";
 
 describe("extractReplyText", () => {
@@ -97,6 +97,17 @@ describe("renderDigestEmail", () => {
     const { text } = renderDigestEmail(content, { appUrl: "https://orbit.example", canReply: false });
     expect(text).not.toContain("Just reply");
     expect(text).toContain("https://orbit.example/capture");
+  });
+});
+
+describe("isDeliverable", () => {
+  it("skips test logins and placeholders, keeps real addresses", () => {
+    expect(isDeliverable("ana@gmail.com")).toBe(true);
+    expect(isDeliverable("orbit@mail.family-site.com")).toBe(true);
+    expect(isDeliverable("dev@orbit.test")).toBe(false);
+    expect(isDeliverable("wife@example.com")).toBe(false);
+    expect(isDeliverable("someone@thing.invalid")).toBe(false);
+    expect(isDeliverable("not-an-address")).toBe(false);
   });
 });
 
