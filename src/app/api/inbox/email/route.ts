@@ -3,6 +3,7 @@ import { createAdminSupabase, hasAdminSupabase } from "@/lib/supabase-admin";
 import { bareAddress, getReceivedEmail, verifyWebhookSignature } from "@/lib/email";
 import { extractReplyText } from "@/lib/email-reply";
 import { getKidsFor, ingestCapture } from "@/lib/inbox";
+import { isSeedProfileId } from "@/lib/family";
 
 export const maxDuration = 60;
 
@@ -64,13 +65,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 502 });
   }
 
+  // Exact, case-insensitive match against real parents only (compared here
+  // rather than with ILIKE, where "_" in an address would be a wildcard).
   const from = bareAddress(email.from);
-  const { data: profile } = await admin
+  const { data: parents, error: parentsError } = await admin
     .from("profiles")
     .select("id, name, email")
-    .eq("role", "parent")
-    .ilike("email", from)
-    .maybeSingle();
+    .eq("role", "parent");
+  if (parentsError) {
+    return NextResponse.json({ error: parentsError.message }, { status: 500 });
+  }
+  const profile = (parents ?? []).find(
+    (p) => !isSeedProfileId(p.id) && p.email && bareAddress(String(p.email)) === from
+  );
   if (!profile) {
     console.warn("[inbox/email] ignored: sender is not a parent profile");
     return NextResponse.json({ ignored: "unknown sender" }, { status: 202 });

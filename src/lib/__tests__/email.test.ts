@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { createHmac } from "node:crypto";
 import { extractReplyText } from "../email-reply";
 import { verifyWebhookSignature, bareAddress, isDeliverable } from "../email";
-import { renderDigestEmail } from "../digest";
+import { renderDigestEmail, pickRecipients } from "../digest";
+import { isSeedProfileId } from "../family";
 
 describe("extractReplyText", () => {
   it("keeps the reply and drops a Gmail quote", () => {
@@ -97,6 +98,29 @@ describe("renderDigestEmail", () => {
     const { text } = renderDigestEmail(content, { appUrl: "https://orbit.example", canReply: false });
     expect(text).not.toContain("Just reply");
     expect(text).toContain("https://orbit.example/capture");
+  });
+});
+
+describe("digest recipients", () => {
+  const DEMO_DAD = "00000000-0000-0000-0000-000000000201";
+  const DEMO_MOM = "00000000-0000-0000-0000-000000000202";
+  const REAL = "3f2b9c1e-7a44-4d0b-9c1a-5e8f2a6b7c90";
+  const DEV = "a81d4f02-11c3-4b7e-8f55-0c2d9e3a4b61";
+
+  it("tells seed ids from auth ids", () => {
+    expect(isSeedProfileId(DEMO_DAD)).toBe(true);
+    expect(isSeedProfileId(REAL)).toBe(false);
+  });
+
+  it("never includes the demo family, a test login, or a parent with no email", () => {
+    const picked = pickRecipients([
+      { id: DEMO_DAD, name: "Miguel", email: "demo.dad@family-demo.com" },
+      { id: DEMO_MOM, name: "Sofia", email: "demo.mom@family-demo.com" },
+      { id: REAL, name: "Ana", email: " ana@gmail.com " },
+      { id: DEV, name: "Dev", email: "dev@orbit.test" },
+      { id: "9d0e1f2a-3b4c-4d5e-8f60-718293a4b5c6", name: "Tomás", email: null },
+    ]);
+    expect(picked).toEqual([{ profileId: REAL, name: "Ana", email: "ana@gmail.com" }]);
   });
 });
 

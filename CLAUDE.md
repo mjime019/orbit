@@ -111,6 +111,15 @@ Key judgment call: ROADMAP.md's "Phase 1–3 COMPLETE ✅" was scored against ac
   above (+ `APP_URL`); everything degrades to a visible "not set up" note
   or a 503 with the missing variable's name. Tooling: vitest/eslint now
   ignore `.claude/**` (task worktrees inside the repo were double-counting).
+  **Nov 10 fix — demo family leaked into the digest:** the first live
+  preview included Johnny, because the digest took every `role='parent'`
+  profile and the demo seed has two. The digest and the reply webhook now
+  go through real parents only (`isSeedProfileId` in `src/lib/family.ts`:
+  seed rows use the all-zero id namespace, real profile ids are auth
+  UUIDs) with a deliverable address (`pickRecipients`, tested). Rule for
+  anything new that isn't scoped through the session parent's own kids:
+  the demo school, parents and Johnny live in the same tables — exclude
+  them explicitly.
 
 - **Oct 5, 2026 — Fonts self-hosted (no build-time Google fetch).** A
   production build of 25b63e6 failed with 18 Turbopack errors: Google Fonts

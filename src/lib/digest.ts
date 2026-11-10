@@ -7,6 +7,7 @@ import { formatAge } from "./age";
 import { familyFormatDate } from "./tz";
 import { INBOX_STATUSES } from "./inbox";
 import { isDeliverable } from "./email";
+import { isSeedProfileId } from "./family";
 
 // The twice-weekly email: each kid in two lines (what's fresh + one leading
 // question the parent can answer in a sentence), then whatever is waiting
@@ -32,6 +33,17 @@ export interface DigestContent {
   recipients: { profileId: string; name: string; email: string }[];
 }
 
+// Who the digest is for: real parents with a deliverable address. Their
+// kids (and only theirs) are who it is about — the demo family never is.
+export function pickRecipients(
+  rows: { id: string; name: string; email: string | null }[]
+): DigestContent["recipients"] {
+  return rows
+    .filter((p) => p.email && !isSeedProfileId(p.id))
+    .map((p) => ({ profileId: p.id, name: p.name, email: String(p.email).trim() }))
+    .filter((r) => isDeliverable(r.email));
+}
+
 export async function buildDigestContent(sb: AnySupabase): Promise<DigestContent> {
   const { data: parents, error: pError } = await sb
     .from("profiles")
@@ -39,14 +51,10 @@ export async function buildDigestContent(sb: AnySupabase): Promise<DigestContent
     .eq("role", "parent")
     .not("email", "is", null);
   if (pError) throw new Error(`[digest] parents: ${pError.message}`);
-  const recipients = (parents ?? [])
-    .map((p) => ({
-      profileId: p.id as string,
-      name: p.name as string,
-      email: String(p.email).trim(),
-    }))
-    .filter((r) => isDeliverable(r.email));
-  if (recipients.length === 0) throw new Error("[digest] no parent profiles with an email");
+  const recipients = pickRecipients(
+    (parents ?? []) as { id: string; name: string; email: string | null }[]
+  );
+  if (recipients.length === 0) throw new Error("[digest] no real parent with a deliverable email");
 
   const { data: links, error: lError } = await sb
     .from("parent_children")
